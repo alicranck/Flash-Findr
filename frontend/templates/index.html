@@ -4,79 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; }
-        .container { display: flex; gap: 20px; }
-        #control-panel { flex: 1; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        #video-feed { flex: 2; border: 1px solid #ccc; border-radius: 8px; background: #000; }
-        #video-stream { width: 100%; display: block; border-radius: 4px; }
-        label, input, textarea, button { display: block; width: 100%; margin-bottom: 10px; }
-        textarea { height: 80px; resize: vertical; }
-        h1, h2 { color: #333; }
-        .info { margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-left: 5px solid #2196F3; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <div class="main-wrapper">
+        <h1>{{ title }}</h1>
+        <p>Zero-Shot, Real-Time Object Detection. Leverage **YOLO-Everything** to find any user-defined object instantly, with no retraining required.</p>
+        <hr>
 
-    <h1>{{ title }} 👁️</h1>
-    <p>Real-Time, Training-Free Object Detection. Input a video source and the objects you want to find.</p>
-    <hr>
+        <div class="container">
+            <div id="control-panel">
+                <h2>1. Custom Setup</h2>
+                <form id="detection-form">
+                    <label for="videoUrl">Video Source URL (e.g., RTSP, MP4 URL):</label>
+                    <input type="text" id="videoUrl" name="videoUrl" 
+                           value="https://cdn.pixabay.com/video/2020/11/13/56310-479197605_large.mp4" 
+                           placeholder="e.g., http://your.stream/feed.mjpeg" required>
+                    
+                    <label for="classes">Detection Vocabulary (Comma-separated list):</label>
+                    <textarea id="classes" name="classes" 
+                              placeholder="e.g., person, bicycle, red car, fire extinguisher" 
+                              required>person, bike, car, truck</textarea>
+                    
+                    <button type="submit" id="startButton">Start Detection Stream</button>
+                </form>
+                
+                <div id="status-box" class="status-box status-ready">
+                    <span class="status-icon">💡</span>
+                    <span id="status-message">Ready to configure stream.</span>
+                </div>
 
-    <div class="container">
-        <div id="control-panel">
-            <h2>1. Setup</h2>
-            <form id="detection-form">
-                <label for="videoUrl">Video Source URL (e.g., RTSP, MP4 URL):</label>
-                <input type="text" id="videoUrl" name="videoUrl" 
-                       value="https://cdn.pixabay.com/video/2020/11/13/56310-479197605_large.mp4" 
-                       placeholder="e.g., http://your.stream/feed.mjpeg" required>
-                
-                <label for="classes">Detection Vocabulary (Comma-separated list):</label>
-                <textarea id="classes" name="classes" 
-                          placeholder="e.g., person, bicycle, red car, fire extinguisher" 
-                          required>person, bike, car, truck</textarea>
-                
-                <button type="submit" id="startButton">Start Detection Stream</button>
-            </form>
-            
-            <div class="info">
-                <strong>Status:</strong> <span id="status-message">Ready.</span>
+            </div>
+
+            <div id="video-feed">
+                <div style="text-align: center; color: #aaa; padding: 20px;">
+                    <h2>Live Detection Feed</h2>
+                    <p id="placeholder-text">Enter stream details and click "Start" to begin analysis.</p>
+                </div>
+                <img id="video-stream" src="" alt="Live Stream" style="display: none;">
             </div>
         </div>
-
-        <div id="video-feed">
-            <h2 style="text-align: center;">Live Video Stream</h2>
-            <img id="video-stream" src="" alt="Video Feed Loading..." style="display: none;">
-        </div>
     </div>
-
-    <script>
-        document.getElementById('detection-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const videoUrl = document.getElementById('videoUrl').value;
-            const classesText = document.getElementById('classes').value;
-            const classes = classesText.split(',').map(c => c.trim()).filter(c => c.length > 0);
-            
-            const videoStreamImg = document.getElementById('video-stream');
-            const startButton = document.getElementById('startButton');
-            const statusMessage = document.getElementById('status-message');
-            
-            const apiUrl = "/stream/start"; 
-            const classesTextJoined = classes.join(','); 
-
-            const streamURL = `${apiUrl}?video_url=${encodeURIComponent(videoUrl)}&classes=${encodeURIComponent(classesTextJoined)}`;
-
-            videoStreamImg.src = streamURL;
-            videoStreamImg.style.display = 'block';
-
-            statusMessage.textContent = 'Stream request sent. Checking feed...';
-            startButton.disabled = true;
-
-            setTimeout(() => {
-                statusMessage.textContent = 'Stream live (refresh page to stop/reset).';
-            }, 2000);
-                    });
-    </script>
+    <script src="/static/main.js"></script>
 </body>
 </html>
