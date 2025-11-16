@@ -3,7 +3,7 @@ import time
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import StreamingResponse
 import cv2
-from ..ml_core.detector import OpenVocabularyDetector
+from ..ml_core.tools.detection import OpenVocabularyDetector
 from ..utils.plotting import fast_plot
 
 current_dir = __file__.rsplit("/", 1)[0]
