@@ -1,5 +1,5 @@
 import os
-from app.utils.types import ImageHandle, List, NumpyMask, any
+from app.utils.types import ImageHandle, List, NumpyMask, Any
 from ultralytics import YOLOE  # type: ignore
 from ultralytics.engine.results import Boxes  # type: ignore
 import numpy as np
@@ -57,14 +57,14 @@ class OpenVocabularyDetector(BaseVisionTool):
         # Note: YOLOv8's .predict() handles pre-processing,
         return frame 
 
-    def inference(self, model_inputs: np.ndarray) -> any:
+    def inference(self, model_inputs: np.ndarray) -> Any:
         """Runs YOLO inference."""
         return self.model.track(model_inputs,
                                  conf=self.conf_threshold,
                                   imgsz=self.imgsz,
                                    tracker='bytetrack.yaml')
 
-    def postprocess(self, raw_output: any, original_shape: tuple) -> dict:
+    def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         """Parses YOLO results and updates the data dict."""
         results = {raw_output[0]} # Get the first result
         data = {

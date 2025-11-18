@@ -49,7 +49,7 @@ class Captioner(BaseVisionTool):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Describe what is happening in this image?"},
+                    {"type": "text", "text": "Give a concise description of what is happening in this image"},
                 {"type": "image", "data": f"image://base64,{base64_encode(frame, 'png')}"},
                 ]
             },
