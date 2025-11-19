@@ -18,10 +18,16 @@ class OpenVocabularyDetector(BaseVisionTool):
     Used for unconstrained zero-shot object detection based on a custom vocabulary.
     """
     def __init__(self, model_id, config, device = 'cpu'):
-        self.imgsz = self.config.get('imgsz', DEFAULT_IMAGE_SIZE)
-        self.conf_threshold = self.config.get('conf_threshold', DEFAULT_CONFIDENCE_THRESHOLD)
-        self.vocabulary = self.config.get('vocabulary', None)
+        self.imgsz: int
+        self.conf_threshold: float
+        self.vocabulary: List[str] | None
         super().__init__(model_id, config, device)
+
+    def _configure(self, config: dict):
+        self.imgsz = config.get('imgsz', DEFAULT_IMAGE_SIZE)
+        self.conf_threshold = config.get('conf_threshold', DEFAULT_CONFIDENCE_THRESHOLD)
+        self.vocabulary = config.get('vocabulary', None)
+        return
 
     def _load_model(self):
 
@@ -110,6 +116,7 @@ class OpenVocabularyDetector(BaseVisionTool):
         )
         return [image]
 
+    @property
     def config_keys(self) -> list:
         vocabulary = ToolKey(
             key_name="vocabulary",

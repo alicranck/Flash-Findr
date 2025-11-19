@@ -71,7 +71,7 @@ def verify_image(image: Union[np.ndarray, Image.Image], allowed_dtypes: Sequence
     if ndim is not None:
         assert image.ndim == ndim, f"Expected image to be of {ndim} dimensions but got shape {image.shape}"
 
-    return
+    return True
 
 
 def base64_encode(np_array, image_format="jpg"):

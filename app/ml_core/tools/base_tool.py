@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import torch
 
-from ...utils.types import ImageHandle, Type, List, Any
+from ...utils.types import ImageHandle, List, Any
 from ...utils.image_utils import load_image_opencv
 
 
@@ -11,7 +11,7 @@ class ToolKey:
     A descriptor for a data key provided or required by a tool.
     This is the core of the "manifest."
     """
-    def __init__(self, key_name: str, data_type: Type, description: str,
+    def __init__(self, key_name: str, data_type: Any, description: str,
                  required: bool = False):
         self.key_name = key_name
         self.data_type = data_type
@@ -24,7 +24,7 @@ class ToolKey:
 
 class BaseVisionTool(ABC):
     """
-    Revised Abstract Base Class for a modular vision tool.
+    Abstract Base Class for a modular vision tool.
     
     This class handles the common workflow:
     1. State (loaded/unloaded)
@@ -33,20 +33,19 @@ class BaseVisionTool(ABC):
     4. The unload() orchestration
     5. The preprocess() -> inference() -> postprocess() pipeline
     """
-    
-    def __init__(self, model_id: str, config: dict, device: str = 'cpu'):
+    def __init__(self, model_id: str, config: dict, 
+                 device: str = 'cpu'):
         """Initializes the tool with configuration, but does not load the model."""
-        self.config = config
-        self.model_id = model_id
-        self.device = device
+        self.model_id : str = model_id
+        self.device: str = device
 
-        self.model = None
-        self.loaded = False
-        self.tool_name = self.__class__.__name__
+        self.model : Any
+        self.loaded: bool = False
+        self.tool_name: str = self.__class__.__name__
 
-        self.load_tool()  # Optionally load the model during initialization
+        self.load_tool(config)  # Optionally load the model during initialization
 
-    def load_tool(self):
+    def load_tool(self, config):
         """
         Public method to load, verify, and warmup the model.
         This is the common "init model" flow.
@@ -59,18 +58,16 @@ class BaseVisionTool(ABC):
 
         for key in self.config_keys:
             if key.required:
-                if key.key_name not in self.config:
+                if key.key_name not in config:
                     raise ValueError(f"ERROR: Missing required config key '{key.key_name}' for {self.tool_name}.")
-                assert isinstance(self.config[key.key_name], key.data_type), \
-                    f"ERROR: Config key '{key.key_name}' must be of type {key.data_type.__name__}."
+                # assert isinstance(config[key.key_name], key.data_type), \
+                #     f"ERROR: Config key '{key.key_name}' must be of type {key.data_type.__name__}."
+                
+        self._configure(config)
 
         try:
             self.model = self._load_model()
-            self.model.to(self.device)
-            self.model.eval()
-            
             self._warmup()
-            
             self.loaded = True
             print(f"INFO: {self.tool_name} successfully loaded and warmed up on {self.device}.")
             
@@ -111,8 +108,12 @@ class BaseVisionTool(ABC):
 
         return updated_data
 
+    def _configure(self, config: dict):
+        """Child implements tool-specific configuration logic."""
+        pass
+
     @abstractmethod
-    def _load_model(self):
+    def _load_model(self) -> Any:
         """Child implements the specific model loading logic (e.g., YOLO(path))."""
         pass
 
@@ -122,17 +123,17 @@ class BaseVisionTool(ABC):
         pass
 
     @abstractmethod
-    def preprocess(self, frame: np.ndarray) -> any:
+    def preprocess(self, frame: np.ndarray) -> Any:
         """Child implements frame-to-tensor logic (resize, normalize, to-device)."""
         pass
 
     @abstractmethod
-    def inference(self, model_inputs: any) -> any:
+    def inference(self, model_inputs: Any) -> Any:
         """Child implements the raw model.forward() call."""
         pass
 
     @abstractmethod
-    def postprocess(self, raw_output: any, original_shape: tuple) -> dict:
+    def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         """Child implements logic to parse raw_output."""
         pass
 

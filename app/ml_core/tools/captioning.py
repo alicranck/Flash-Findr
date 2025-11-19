@@ -1,11 +1,9 @@
 import os
-from platform import processor
-from xml.parsers.expat import model
-from app.utils.types import ImageHandle, List, NumpyMask, any
+from app.utils.types import ImageHandle, Any
 from transformers import AutoProcessor, AutoModelForImageTextToText
+from optimum.intel.openvino.modeling_visual_language import OVModelForVisualCausalLM
 import numpy as np
 import torch
-import base64
 
 from .base_tool import BaseVisionTool, ToolKey
 from ...utils.image_utils import base64_encode
@@ -24,16 +22,8 @@ class Captioner(BaseVisionTool):
 
     def _load_model(self):
 
-        # check if file exists else download to models/
-        if not os.path.isfile(self.model_id):
-            model_path = os.path.join(f"{current_dir}/../../models", self.model_id)
-        else:
-            model_path = self.model_id
-            
-        model = AutoModelForImageTextToText.from_pretrained(model_path,
-                                                            torch_dtype=torch.bfloat16,
-                                                            _attn_implementation="flash_attention_2")
-        self.processor = AutoProcessor.from_pretrained(model_path)
+        model = OVModelForVisualCausalLM.from_pretrained(self.model_id)
+        self.processor = AutoProcessor.from_pretrained(self.model_id)
 
         return model
 
@@ -49,8 +39,8 @@ class Captioner(BaseVisionTool):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Give a concise description of what is happening in this image"},
-                {"type": "image", "data": f"image://base64,{base64_encode(frame, 'png')}"},
+                {"type": "text", "text": "Give a concise description of what is happening in this image"},
+                {"type": "image", "url": f"data:image/png;base64,{base64_encode(frame, 'png')}"},
                 ]
             },
         ]
@@ -60,10 +50,10 @@ class Captioner(BaseVisionTool):
                                                     tokenize=True,
                                                     return_dict=True,
                                                     return_tensors="pt"
-                                                    ).to(self.device, dtype=torch.bfloat16)
+                                                    ).to(self.device)
         return inputs
 
-    def inference(self, model_inputs: any) -> any:
+    def inference(self, model_inputs: Any) -> Any:
 
         generated_ids = self.model.generate(**model_inputs, do_sample=False,
                                              max_new_tokens=64)
@@ -72,7 +62,7 @@ class Captioner(BaseVisionTool):
 
         return generated_texts
 
-    def postprocess(self, raw_output: any, original_shape: tuple) -> dict:
+    def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         data = {"caption": raw_output[0]}
         return data
     
@@ -95,5 +85,6 @@ class Captioner(BaseVisionTool):
         )
         return [image]
 
+    @property
     def config_keys(self) -> list:
         return []
