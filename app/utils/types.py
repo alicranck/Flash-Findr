@@ -1,6 +1,7 @@
 from typing import (Union, Sequence, Optional, 
                     get_args, get_origin, Iterable, 
                     Dict, Tuple, List, Any, Type)
+from dataclasses import dataclass
 from typing_extensions import Annotated
 
 import io
@@ -55,3 +56,12 @@ NumpyMask = Annotated[np.ndarray, AfterValidator(check_is_numpy_mask)]
 # Image constants
 IMG_EXTENSIONS = [ext.lower() for ext in ['jpg', 'jpeg', 'png', 'ppm', 'bmp', 'tiff', "webp"]]
 IMG_MODES = ['1', 'L', 'P', 'RGB', 'RGBA', 'CMYK', 'YCbCr', 'LAB', 'HSV', 'I', 'F']
+
+@dataclass
+class FrameContext:
+    """
+    Metadata associated with a video frame to allow tools to make temporal decisions.
+    """
+    frame_idx: int
+    scene_change_score: float = 0.0
+    timestamp: float = 0.0

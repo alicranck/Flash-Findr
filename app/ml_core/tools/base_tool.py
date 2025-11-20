@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import torch
 
-from ...utils.types import ImageHandle, List, Any
+from ...utils.types import ImageHandle, List, Any, FrameContext
 from ...utils.image_utils import load_image_opencv
 
 
@@ -25,17 +25,9 @@ class ToolKey:
 class BaseVisionTool(ABC):
     """
     Abstract Base Class for a modular vision tool.
-    
-    This class handles the common workflow:
-    1. State (loaded/unloaded)
-    2. Device management
-    3. The load() -> warmup() orchestration
-    4. The unload() orchestration
-    5. The preprocess() -> inference() -> postprocess() pipeline
     """
     def __init__(self, model_id: str, config: dict, 
                  device: str = 'cpu'):
-        """Initializes the tool with configuration."""
         self.model_id : str = model_id
         self.device: str = device
 
@@ -44,8 +36,11 @@ class BaseVisionTool(ABC):
         self.tool_name: str = self.__class__.__name__
 
         self.last_result: Any = None
+        
+        # Trigger configuration
+        self.trigger = config.get('trigger', {})
 
-        self.load_tool(config)  # Optionally load the model during initialization
+        self.load_tool(config)
 
     def load_tool(self, config):
         """
@@ -90,7 +85,26 @@ class BaseVisionTool(ABC):
         self.loaded = False
         print(f"INFO: {self.tool_name} unloaded and cleared from {self.device}.")
 
-    def process(self, frame_handle: ImageHandle, data: dict) -> dict:
+    def should_run(self, context: FrameContext) -> bool:
+        """
+        Determines if the tool should run based on the current frame context and trigger settings.
+        """
+        if self.last_result is None or not context:
+            return True # Always run if we have no history
+            
+        trigger_type = self.trigger.get('type', 'always')
+        
+        if trigger_type == 'stride':
+            stride = self.trigger.get('value', 1)
+            return (context.frame_idx % stride) == 0
+            
+        elif trigger_type == 'scene_change':
+            threshold = self.trigger.get('threshold', 0.3)
+            return context.scene_change_score >= threshold
+            
+        return True
+
+    def process(self, frame_handle: ImageHandle, data: dict, context: FrameContext = None) -> dict:
         """
         Public method to run the full inference pipeline.
         This is the common "process frame" flow.
@@ -98,15 +112,19 @@ class BaseVisionTool(ABC):
         if not self.loaded:
             raise RuntimeError(f"ERROR: {self.tool_name} is not loaded. Call .load_tool() first.")
 
-        frame = load_image_opencv(frame_handle)
-        model_input = self.preprocess(frame)
+        if self.should_run(context):
+            print(f"DETECTED Trigger for {self.tool_name}")
+            frame = load_image_opencv(frame_handle)
+            model_input = self.preprocess(frame)
+            
+            with torch.no_grad():
+                raw_output = self.inference(model_input)
+
+            self.last_result = raw_output
+            new_data = self.postprocess(raw_output, frame.shape)
+        else:
+            new_data = self.extrapolate_last(frame_handle)
         
-        with torch.no_grad():
-            raw_output = self.inference(model_input)
-
-        self.last_result = raw_output
-        new_data = self.postprocess(raw_output, frame.shape)
-
         updated_data = {**data, **new_data}
 
         return updated_data

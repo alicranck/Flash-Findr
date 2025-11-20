@@ -82,13 +82,16 @@ startButton.addEventListener('click', async () => {
         }
         toolSettings.detection = {
             vocabulary: vocab,
-            conf_threshold: parseFloat(confidenceInput.value)
+            conf_threshold: parseFloat(confidenceInput.value),
+            trigger: { "type": "stride", "value": 3 }
         };
     }
 
     // Captioning Config
     if (toggleCaptioning.checked) {
-        toolSettings.captioning = {};
+        toolSettings.captioning = {
+            trigger: { "type": "scene_change", "threshold": 0.33 }
+        };
     }
 
     if (Object.keys(toolSettings).length === 0) {
@@ -97,7 +100,6 @@ startButton.addEventListener('click', async () => {
 
     const payload = {
         video_url: videoUrl,
-        video_stride: 1,
         pipeline: {
             tool_settings: toolSettings
         }
@@ -228,7 +230,7 @@ function drawMetadata(data) {
     // Get current pointer position for hover logic
     const pointer = stage.getPointerPosition();
 
-    // Draw Boxes
+    // Draw Boxes with names
     if (data.boxes) {
         data.boxes.forEach(box => {
             const [x1, y1, x2, y2] = box.xyxy;
@@ -264,7 +266,7 @@ function drawMetadata(data) {
             // Label (Visible only on hover)
             const label = new Konva.Text({
                 x: x,
-                y: y - 20,
+                y: y - 10,
                 text: `${box.conf.toFixed(2)}`, // You might want class name here too if available in map
                 fontSize: 16,
                 fill: '#fff',
@@ -278,7 +280,7 @@ function drawMetadata(data) {
             if (isHover) {
                 const tooltip = new Konva.Label({
                     x: x,
-                    y: y - 25,
+                    y: y - 10,
                     opacity: 1
                 });
 
@@ -295,8 +297,8 @@ function drawMetadata(data) {
                 }));
 
                 tooltip.add(new Konva.Text({
-                    text: `${box.conf.toFixed(2)}`, // Ideally map class ID to name here if we had the map
-                    fontFamily: 'Inter',
+                    text: `${data.class_names[box.cls]}: ${box.conf.toFixed(2)}`,
+                    fontFamily: 'monospace',
                     fontSize: 14,
                     padding: 5,
                     fill: 'black'

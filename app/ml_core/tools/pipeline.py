@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from .detection import OpenVocabularyDetector
 from .captioning import Captioner
+from ...utils.types import FrameContext
 
 
 AVAILABLE_TOOL_TYPES = {
@@ -34,11 +35,11 @@ class VisionPipeline:
         self.config = config
         self.tools = self._initialize_tools()
 
-    def run_pipeline(self, frame: Any) -> Dict[str, Any]:
+    def run_pipeline(self, frame: Any, context: FrameContext = None) -> Dict[str, Any]:
 
         data = {}
         for tool in self.tools:
-            tool_results = tool.process(frame, data)
+            tool_results = tool.process(frame, data, context=context)
             data.update(tool_results)
 
         return frame, data

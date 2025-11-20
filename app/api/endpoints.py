@@ -62,8 +62,6 @@ async def stream_video(session_id: str):
         engine = VideoInferenceEngine(
             tool_pipeline=pipeline,
             video_path=session_config.video_url,
-            frame_stride=session_config.video_stride,
-            dist_th=session_config.frame_distance
         )
         
         async def on_data(data):

@@ -1,6 +1,6 @@
 import os
 from app.utils.types import ImageHandle, Any
-from transformers import AutoProcessor, AutoModelForImageTextToText
+from transformers import AutoProcessor, AutoModelForImageTextToText, AutoTokenizer
 from optimum.intel.openvino.modeling_visual_language import OVModelForVisualCausalLM
 import numpy as np
 import torch
@@ -18,12 +18,14 @@ class Captioner(BaseVisionTool):
     """
     def __init__(self, model_id, config, device = 'cpu'):
         self.processor = None
+        self.tokenizer = None
         super().__init__(model_id, config, device)
 
     def _load_model(self):
 
         model = OVModelForVisualCausalLM.from_pretrained(self.model_id)
         self.processor = AutoProcessor.from_pretrained(self.model_id)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
 
         return model
 
@@ -57,7 +59,8 @@ class Captioner(BaseVisionTool):
         return generated_texts
 
     def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
-        data = {"caption": raw_output[0]}
+        assitant_response = raw_output[0].split("Assistant:")[1].strip()
+        data = {"caption": assitant_response}
         return data
     
     @property
