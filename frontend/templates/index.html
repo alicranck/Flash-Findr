@@ -1,50 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/konva@9.3.3/konva.min.js"></script>
 </head>
+
 <body>
-    <div class="main-wrapper">
-        <h1>{{ title }}</h1>
-        <p>Zero-Shot, Real-Time Object Detection. Leverage **YOLO-Everything** to find any user-defined object instantly, with no retraining required.</p>
-        <hr>
-
-        <div class="container">
-            <div id="control-panel">
-                <h2>1. Custom Setup</h2>
-                <form id="detection-form">
-                    <label for="videoUrl">Video Source URL (e.g., RTSP, MP4 URL):</label>
-                    <input type="text" id="videoUrl" name="videoUrl" 
-                           value="https://cdn.pixabay.com/video/2020/11/13/56310-479197605_large.mp4" 
-                           placeholder="e.g., http://your.stream/feed.mjpeg" required>
-                    
-                    <label for="classes">Detection Vocabulary (Comma-separated list):</label>
-                    <textarea id="classes" name="classes" 
-                              placeholder="e.g., person, bicycle, red car, fire extinguisher" 
-                              required>person, bike, car, truck</textarea>
-                    
-                    <button type="submit" id="startButton">Start Detection Stream</button>
-                </form>
-                
-                <div id="status-box" class="status-box status-ready">
-                    <span class="status-icon">💡</span>
-                    <span id="status-message">Ready to configure stream.</span>
-                </div>
-
+    <div class="cockpit-wrapper">
+        <!-- Sidebar: Tool Configuration -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>⚡ Flash-Findr</h2>
+                <p class="subtitle">Vision Cockpit v1.0</p>
             </div>
 
-            <div id="video-feed">
-                <div style="text-align: center; color: #aaa; padding: 20px;">
-                    <h2>Live Detection Feed</h2>
-                    <p id="placeholder-text">Enter stream details and click "Start" to begin analysis.</p>
+            <div class="toolbox">
+                <h3>Global Settings</h3>
+                <div class="tool-card">
+                    <label for="videoUrl">Video Source</label>
+                    <input type="text" id="videoUrl"
+                        value="https://cdn.pixabay.com/video/2020/11/13/56310-479197605_large.mp4"
+                        placeholder="RTSP / MP4 URL">
                 </div>
-                <img id="video-stream" src="" alt="Live Stream" style="display: none;">
+
+                <h3>Active Tools</h3>
+
+                <!-- Detection Tool Card -->
+                <div class="tool-card active-card" id="card-detection">
+                    <div class="card-header">
+                        <span>👁️ Detection</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-detection" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="card-body" id="body-detection">
+                        <label for="classes">Vocabulary</label>
+                        <textarea id="classes" placeholder="person, car...">person, car, bus</textarea>
+
+                        <label for="confidence">Confidence: <span id="conf-val">0.25</span></label>
+                        <input type="range" id="confidence" min="0.1" max="1.0" step="0.05" value="0.25">
+                    </div>
+                </div>
+
+                <!-- Captioning Tool Card -->
+                <div class="tool-card" id="card-captioning">
+                    <div class="card-header">
+                        <span>📝 Captioning</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-captioning">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="card-body disabled-body" id="body-captioning">
+                        <p class="info-text">Generates descriptions for frames.</p>
+                    </div>
+                </div>
+
+                <button id="startButton" class="action-btn">🚀 Initialize Stream</button>
             </div>
-        </div>
+        </aside>
+
+        <!-- Main Content: Video Feed -->
+        <main class="main-stage">
+            <div class="video-container" id="video-wrapper">
+                <div id="placeholder-overlay">
+                    <div class="loader-content">
+                        <h3>System Standby</h3>
+                        <p>Configure tools and initialize stream.</p>
+                    </div>
+                </div>
+                <img id="video-stream" src="" alt="">
+                <div id="canvas-overlay"></div>
+                <div id="caption-overlay" class="hidden"></div>
+            </div>
+
+            <!-- Bottom Panel: Logs -->
+            <div class="log-panel">
+                <div class="log-header">
+                    <span>📟 System Logs</span>
+                    <span class="status-indicator status-ready" id="status-indicator">READY</span>
+                </div>
+                <div class="log-content" id="log-content">
+                    <div class="log-entry">[SYSTEM] Interface loaded. Waiting for configuration...</div>
+                </div>
+            </div>
+        </main>
     </div>
     <script src="/static/main.js"></script>
 </body>
+
 </html>

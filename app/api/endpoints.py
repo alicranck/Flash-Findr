@@ -1,102 +1,86 @@
 import yaml
-import time
-from typing import Sequence
-
-from fastapi import APIRouter, Query, HTTPException, Body
-from fastapi.responses import StreamingResponse
+import uuid
+from typing import Dict, Any
+from fastapi import APIRouter, Query, HTTPException, Body, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse, JSONResponse
 import cv2
 
-from .engine import VideoInferenceEngine
-from ..ml_core.tools.detection import OpenVocabularyDetector
-from ..ml_core.tools.captioning import ImageCaptioningTool
-from ..ml_core.tools.base_tool import BaseVisionTool
+from .engine import VideoInferenceEngine, SessionConfig
 from ..ml_core.tools.pipeline import PipelineConfig, VisionPipeline
 from ..utils.plotting import fast_plot
-
-
-current_dir = __file__.rsplit("/", 1)[0]
-with open(f"{current_dir}/../ml_core/configs/ov_detection.yaml", "r") as f:
-    config = yaml.safe_load(f)
+from .socket_manager import ConnectionManager
+from ..utils.serialization import serialize_data
 
 
 router = APIRouter()
 
+# In-memory session store: {session_id: SessionConfig}
+SESSION_STORE: Dict[str, SessionConfig] = {}
 
-# def stream_video_detection(detector: OpenVocabularyDetector, video_url: str):
-#     """
-#     Generator function that reads video frames, detects objects, and yields annotated JPEGs.
-#     """
+# WebSocket Manager
+manager = ConnectionManager()
 
-#     for results in detector.detect_stream(video_url):
-
-#         t0 = time.time()        
-#         if results.boxes:
-#             annotated_frame = fast_plot(results.orig_img, results.boxes, 
-#                                         results.names)
-#         else:
-#             annotated_frame = results.orig_img
-#         t1 = time.time()
-#         _, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-#         t2 = time.time()
-#         print(f"[INFO] Plotting time: {(t1 - t0)*1000:.2f} ms | Encoding time: {(t2 - t1)*1000:.2f} ms")
-#         yield (b'--frame\r\n'
-#                 b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-        
-
-def video_detection(pipeline: VisionPipeline, video_url: str,
-                     vid_stride: int = 1):
-    """
-    Generator function that reads video frames, detects objects, and yields annotated JPEGs.
-    """
-
-    engine = VideoInferenceEngine(pipeline, video_url, frame_stride=vid_stride)
-    return StreamingResponse(engine.run_inference(), media_type="multipart/x-mixed-replace; boundary=frame")
-
-
-# @router.get("/stream/start")
-# async def start_pipeline(
-#     tool_types: str = Query(..., description="Comma-separated list of tool types (detection, captioning)"),
-#     video_url: str = Query(..., description="URL of the video source (RTSP, MP4, etc.)"),
-#     classes: str = Query(..., description="Comma-separated list of detection classes"),
-#     output_type: str = Query("detection", description="Type of output: detection or captioning")
-#     ):
-#     """
-#     Starts the real-time video processing stream using GET parameters.
-#     """
-#     class_list = [c.strip() for c in classes.split(',') if c.strip()]
-    
-#     try:
-#         detector = OpenVocabularyDetector(config['model'])
-#         detector.set_vocabulary(class_list)
-#         return StreamingResponse(
-#             video_detection(detector, video_url, config.get('vid_stride', 1)),
-#             media_type="multipart/x-mixed-replace; boundary=frame"
-#         )
-#     except RuntimeError as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-    
-
-@router.post("/stream/start") # CHANGED FROM GET TO POST
-async def start_pipeline(
-    config: PipelineConfig = Body(..., description="JSON configuration for the vision pipeline")
+@router.post("/session/init")
+async def init_session(
+    config: SessionConfig = Body(..., description="JSON configuration for the vision session")
 ):
     """
-    Starts the real-time vision pipeline, validating configuration via a JSON request body, 
-    and streams results.
+    Initializes a streaming session with the provided configuration.
+    Returns a session_id that can be used to consume the stream via GET.
     """
-    requested_tools = config.tool_types
-    pipeline_config = {
-        'video_url': config.video_url,
-        # Merge tool_settings into the main config dict
-        **config.tool_settings 
-    }
+    try:
+        session_id = str(uuid.uuid4())
+        SESSION_STORE[session_id] = config
+        return JSONResponse(content={"session_id": session_id})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Session Initialization Error: {e}")
+
+
+@router.websocket("/ws/stream/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    await manager.connect(session_id, websocket)
+    try:
+        while True:
+            # Keep connection alive, maybe listen for client events later
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(session_id, websocket)
+
+
+@router.get("/stream/{session_id}")
+async def stream_video(session_id: str):
+    """
+    Streams the video for a valid session_id.
+    """
+    if session_id not in SESSION_STORE:
+        raise HTTPException(status_code=404, detail="Session not found or expired.")
+    
+    session_config = SESSION_STORE[session_id]
     
     try:
-        pipeline = VisionPipeline(config=pipeline_config)
+        pipeline = VisionPipeline(config=session_config.pipeline)
+        engine = VideoInferenceEngine(
+            tool_pipeline=pipeline,
+            video_path=session_config.video_url,
+            frame_stride=session_config.video_stride,
+            dist_th=session_config.frame_distance
+        )
         
-        # 3. Start the Stream
+        async def on_data(data):
+            # Serialize and broadcast to WebSocket
+            json_data = serialize_data(data)
+            await manager.broadcast(session_id, json_data)
+
         return StreamingResponse(
-            video_detection(pipeline, config.video_url, vid_stride=3),
+            engine.run_inference(on_data=on_data),
+            media_type="multipart/x-mixed-replace; boundary=frame"
+        )
+        
+    except (RuntimeError, ValueError) as e:
+        raise HTTPException(status_code=500, detail=f"Streaming Error: {e}")
+        
+        return StreamingResponse(
+            engine.run_inference(),
             media_type="multipart/x-mixed-replace; boundary=frame"
         )
         

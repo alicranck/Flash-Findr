@@ -86,3 +86,12 @@ def base64_encode(np_array, image_format="jpg"):
     base64_encoded_image = base64.b64encode(img_bytes).decode('utf-8')
 
     return base64_encoded_image
+
+
+def color_histogram(image: np.ndarray, bins: int = 256) -> \
+                        Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Computes the color histogram for each channel in the image."""
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hist = cv2.calcHist([hsv], [0], None, [bins], [0, bins])
+    cv2.normalize(hist, hist)
+    return hist

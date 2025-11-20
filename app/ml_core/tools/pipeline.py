@@ -3,64 +3,70 @@ from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
 from .detection import OpenVocabularyDetector
-from .captioning import ImageCaptioningTool
+from .captioning import Captioner
+
 
 AVAILABLE_TOOL_TYPES = {
     'detection': OpenVocabularyDetector,
-    'captioning': ImageCaptioningTool
+    'captioning': Captioner
+}
+
+MODEL_IDS = {
+    'detection': '/home/almog_elharar/almog/Flash-Findr/app/models/yoloe-11s-seg',
+    'captioning': '/home/almog_elharar/almog/Flash-Findr/app/models/OVSmolVLM2-256M_video'
 }
 
 
 class PipelineConfig(BaseModel):
-    """Defines the expected structure for the JSON configuration body."""
-    
-    video_url: str = Field(..., description="URL of the video source (RTSP, MP4, etc.)")
-    tool_types: List[str] = Field(..., description="List of tool identifiers to activate (e.g., ['detection', 'segmentation']).")
-    
-    # Tool settings are now nested under the tool's name.
+    """Defines the expected structure for the JSON configuration body.
+    In the future, this will be represented as layers of a DAG to allow for more complex pipelines."""    
     tool_settings: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Nested dictionary of tool-specific static configuration (e.g., {'detection': {'vocabulary': ['person', 'car']}})."
+        description="Nested dictionary of tool-specific static configuration " \
+                        "(e.g., {'detection': {'vocabulary': ['person', 'car']}})."
     )
 
 
 class VisionPipeline:
-
+    """A modular vision processing pipeline that sequentially 
+    applies a series of tools to input frames."""
     def __init__(self, config: PipelineConfig):
         self.config = config
         self.tools = self._initialize_tools()
 
     def run_pipeline(self, frame: Any) -> Dict[str, Any]:
 
-        processed_frame = frame
-
+        data = {}
         for tool in self.tools:
-            inputs = tool.preprocess(processed_frame)
-            outputs = tool.inference(inputs)
-            processed_frame = tool.postprocess(outputs, processed_frame)
+            tool_results = tool.process(frame, data)
+            data.update(tool_results)
 
-        return processed_frame
+        return frame, data
+
+    def extrapolate_last(self, frame: Any) -> Dict[str, Any]:
+        
+        data = {}
+        for tool in self.tools:
+            tool_results = tool.extrapolate_last(frame)
+            data.update(tool_results)
+
+        return frame, data
 
     def _initialize_tools(self) -> List[Any]:
 
-        self._verify_config()
-
         tools = []
-        for tool_type in self.config.tool_types:
+        for tool_type in self.config.tool_settings.keys():
+
             if tool_type not in AVAILABLE_TOOL_TYPES:
                 raise ValueError(f"Tool type '{tool_type}' is not recognized.")
             
             tool_class = AVAILABLE_TOOL_TYPES[tool_type]
             tool_config = self.config.tool_settings.get(tool_type, {})
-            tool_instance = tool_class(config=tool_config)
+            tool_model_id = MODEL_IDS[tool_type]
+
+            tool_instance = tool_class(model_id=tool_model_id, config=tool_config)
             tools.append(tool_instance)
         
         return tools
-    
-    def _verify_config(self):
-        """Verifies that all required config keys for each tool are present."""
-        for tool in self.tools:
-            for key in tool.config_keys():
-                if key.required and key.key_name not in self.config.get(tool.tool_name, {}):
-                    raise ValueError(f"Missing required config key '{key.key_name}' for tool '{tool.tool_name}'.")
+
         

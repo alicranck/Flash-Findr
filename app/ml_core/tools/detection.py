@@ -47,21 +47,10 @@ class OpenVocabularyDetector(BaseVisionTool):
 
         return onnx_model
 
-    def _warmup(self):
-        """Implements a dummy YOLO predict run."""
-        for i in range(16):
-            dummy_frame = np.zeros((640, 480, 3), dtype=np.uint8)
-            self.model.predict(dummy_frame)
-
     def set_vocabulary(self, classes: list):
-        """Custom method for this tool."""
         if self.model:
             self.model.set_classes(classes)
             print(f"INFO: DetectionTool vocabulary set to: {classes}")
-
-    def preprocess(self, frame: np.ndarray) -> np.ndarray:
-        # Note: YOLOv8's .predict() handles pre-processing,
-        return frame 
 
     def inference(self, model_inputs: np.ndarray) -> Any:
         """Runs YOLO inference."""
@@ -72,16 +61,20 @@ class OpenVocabularyDetector(BaseVisionTool):
 
     def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         """Parses YOLO results and updates the data dict."""
-        results = {raw_output[0]} # Get the first result
+        results = raw_output[0]
         data = {
             "boxes": results.boxes,
-            "masks": np.array(results.masks) if results.masks is not None else None,
+            "masks": results.masks if results.masks is not None else None,
             "keypoints": results.keypoints
         }
         return data
+    
+    def extrapolate_last(self, frame_handle: ImageHandle) -> Any:
+        # TODO implement motion prediction based extrapolation
+        return super().extrapolate_last(frame_handle)
 
     @staticmethod
-    def compile_onnx_model(model, imgsz=640):
+    def compile_onnx_model(model, imgsz: int = DEFAULT_IMAGE_SIZE):
         onnx_model = model.export(format="onnx", dynamic=True,
                                    imgsz=imgsz, batch=1)
         ort_session = YOLOE(onnx_model)
@@ -108,13 +101,7 @@ class OpenVocabularyDetector(BaseVisionTool):
     
     @property
     def processing_input_keys(self) -> list:
-        image = ToolKey(
-            key_name="image",
-            data_type=ImageHandle,
-            description="Input image for detection",
-            required=True
-        )
-        return [image]
+        return []
 
     @property
     def config_keys(self) -> list:

@@ -1,164 +1,314 @@
-/* --- Global Styles & Colors --- */
 :root {
-    --primary-color: #2196F3; /* Blue - for buttons/status */
-    --secondary-color: #f4f4f9; /* Light Gray - for background */
-    --border-color: #ddd;
-    --success-color: #4CAF50;
-    --error-color: #F44336;
-    --text-color: #333;
+    --bg-dark: #0a0b10;
+    --bg-panel: #14161f;
+    --accent-primary: #00f2ff;
+    /* Neon Cyan */
+    --accent-secondary: #7000ff;
+    /* Neon Purple */
+    --text-main: #e0e0e0;
+    --text-muted: #888;
+    --border-color: #2a2d3a;
+    --success: #00ff9d;
+    --warning: #ffbd2e;
+    --danger: #ff0055;
 }
 
-body { 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    background-color: var(--secondary-color);
-    color: var(--text-color);
+body {
     margin: 0;
-    padding: 10px 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-}
-
-/* --- Layout --- */
-.main-wrapper {
-    max-width: 95%;
-    width: 95%;
-    max-height: 90vh;
-    height: 90vh;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-}
-
-.container { 
-    flex-grow: 1;
-    display: flex; 
-    gap: 30px; 
-    min-height: 0;
-}
-
-#control-panel { 
-    /* restrict width to 20% of container */
-    flex: 0 0 20%;
-    padding: 0;
-    overflow-y: auto; /* Allows the setup panel to scroll if content is too long */
-    padding-right: 10px; /* Space for scrollbar */
-}
-
-/* New style for the video feed to fill its flexible space */
-#video-feed { 
-    flex: 2; 
-    background: #111; 
-    border-radius: 8px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    height: 100vh;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    /* Ensure video feed container respects its parent's height */
-    height: 100%;
+}
+
+/* --- Layout Grid --- */
+.cockpit-wrapper {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    /* Sidebar | Main Content */
+    height: 100vh;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
 }
 
-#video-stream { 
-    width: 100%; 
-    /* NEW: Use flex-grow to make the video image fill the remaining space */
-    flex-grow: 1; 
-    object-fit: contain; /* Ensures the video content scales correctly within its container */
+.sidebar-header h2 {
+    margin: 0;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 1.5rem;
 }
 
-/* Additional fix for the main header elements to ensure they don't take up too much vertical space */
-h1, p {
-    margin-top: 0;
-}
-hr {
-    margin-bottom: 20px;
-}
-
-/* --- Form & Input Elements --- */
-label { 
-    display: block; 
-    margin-top: 15px;
-    margin-bottom: 5px;
-    font-weight: 600;
-    color: var(--text-color);
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    margin-bottom: 30px;
 }
 
-input[type="text"], textarea { 
-    display: block; 
-    width: calc(100% - 20px);
-    padding: 10px;
+.toolbox h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+/* --- Tool Cards --- */
+.tool-card {
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    margin-bottom: 20px;
-    transition: border-color 0.3s;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    padding: 15px;
+    transition: all 0.3s ease;
 }
-input:focus, textarea:focus {
-    border-color: var(--primary-color);
+
+.tool-card.active-card {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.card-body {
+    margin-top: 10px;
+    transition: opacity 0.3s;
+}
+
+.disabled-body {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* --- Form Elements --- */
+input[type="text"],
+textarea {
+    width: 100%;
+    background: #000;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+    font-family: monospace;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+    border-color: var(--accent-primary);
     outline: none;
 }
 
-textarea { 
-    height: 100px; 
-    resize: vertical; 
+label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: block;
 }
 
-button { 
-    padding: 12px 20px;
-    background-color: var(--primary-color);
-    color: white;
+/* --- Toggle Switch --- */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border-radius: 20px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--accent-primary);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+/* --- Action Button --- */
+.action-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(45deg, var(--accent-secondary), var(--accent-primary));
     border: none;
+    color: white;
+    font-weight: bold;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s, opacity 0.3s;
-    width: 100%;
-    margin-top: 10px;
+    margin-top: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: transform 0.2s;
 }
 
-button:hover:not(:disabled) {
-    background-color: #1a78c2;
+.action-btn:hover {
+    transform: scale(1.02);
 }
 
-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* --- Status Indicator (Modernized) --- */
-.status-box { 
-    margin-top: 25px; 
-    padding: 15px; 
-    border-radius: 6px;
-    font-size: 1.1em;
-    font-weight: 600;
+/* --- Main Stage --- */
+.main-stage {
     display: flex;
+    flex-direction: column;
+    background: #000;
+    position: relative;
+}
+
+.video-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
     align-items: center;
+    position: relative;
+    overflow: hidden;
 }
 
-.status-ready { 
-    background-color: #e0f7fa; 
-    border: 1px solid #00bcd4; 
-    color: #00838f;
-}
-.status-live { 
-    background-color: #e8f5e9; 
-    border: 1px solid var(--success-color); 
-    color: var(--success-color);
-}
-.status-error { 
-    background-color: #ffebee; 
-    border: 1px solid var(--error-color); 
-    color: var(--error-color);
-}
-.status-pending { 
-    background-color: #fff3e0; 
-    border: 1px solid #ff9800; 
-    color: #ef6c00;
+#video-stream {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    z-index: 1;
 }
 
-.status-icon {
-    margin-right: 10px;
+#canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    /* pointer-events: none;  <-- Removed to allow Konva interactivity */
+}
+
+#caption-overlay {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 22, 31, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 15px 25px;
+    border-radius: 12px;
+    color: var(--text-main);
+    font-size: 1rem;
+    text-align: center;
+    max-width: 80%;
+    z-index: 20;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+#caption-overlay.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+    pointer-events: none;
+}
+
+#placeholder-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle, #1a1d29 0%, #000 100%);
+    z-index: 0;
+}
+
+.loader-content {
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* --- Log Panel --- */
+.log-panel {
+    height: 150px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.log-header {
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.log-content {
+    flex: 1;
+    padding: 10px 20px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+}
+
+.status-indicator {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+
+.status-ready {
+    background: #333;
+    color: #aaa;
+}
+
+.status-live {
+    background: rgba(0, 255, 157, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
 }

@@ -27,12 +27,6 @@ class Captioner(BaseVisionTool):
 
         return model
 
-    def _warmup(self):
-        """Implements a dummy captioning run."""
-        dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        inputs = self.preprocess(dummy_frame)
-        _ = self.inference(inputs)
-
     def preprocess(self, frame: np.ndarray) -> np.ndarray:
 
         messages = [
@@ -68,22 +62,16 @@ class Captioner(BaseVisionTool):
     
     @property
     def output_keys(self) -> list:
-        captions = ToolKey(
-            key_name="captions",
+        caption = ToolKey(
+            key_name="caption",
             data_type=str,
             description="Generated captions describing the input image",
         )
-        return [captions]
+        return [caption]
 
     @property
     def processing_input_keys(self) -> list:
-        image = ToolKey(
-            key_name="image",
-            data_type=ImageHandle,
-            description="Input image for detection",
-            required=True
-        )
-        return [image]
+        return []
 
     @property
     def config_keys(self) -> list:

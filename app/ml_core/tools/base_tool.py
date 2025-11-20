@@ -35,13 +35,15 @@ class BaseVisionTool(ABC):
     """
     def __init__(self, model_id: str, config: dict, 
                  device: str = 'cpu'):
-        """Initializes the tool with configuration, but does not load the model."""
+        """Initializes the tool with configuration."""
         self.model_id : str = model_id
         self.device: str = device
 
         self.model : Any
         self.loaded: bool = False
         self.tool_name: str = self.__class__.__name__
+
+        self.last_result: Any = None
 
         self.load_tool(config)  # Optionally load the model during initialization
 
@@ -60,8 +62,6 @@ class BaseVisionTool(ABC):
             if key.required:
                 if key.key_name not in config:
                     raise ValueError(f"ERROR: Missing required config key '{key.key_name}' for {self.tool_name}.")
-                # assert isinstance(config[key.key_name], key.data_type), \
-                #     f"ERROR: Config key '{key.key_name}' must be of type {key.data_type.__name__}."
                 
         self._configure(config)
 
@@ -90,7 +90,7 @@ class BaseVisionTool(ABC):
         self.loaded = False
         print(f"INFO: {self.tool_name} unloaded and cleared from {self.device}.")
 
-    def process(self, frame_handle: ImageHandle) -> dict:
+    def process(self, frame_handle: ImageHandle, data: dict) -> dict:
         """
         Public method to run the full inference pipeline.
         This is the common "process frame" flow.
@@ -104,7 +104,23 @@ class BaseVisionTool(ABC):
         with torch.no_grad():
             raw_output = self.inference(model_input)
 
-        updated_data = self.postprocess(raw_output, frame.shape)
+        self.last_result = raw_output
+        new_data = self.postprocess(raw_output, frame.shape)
+
+        updated_data = {**data, **new_data}
+
+        return updated_data
+    
+    def extrapolate_last(self, frame_handle: ImageHandle) -> Any:
+        """
+        Public method to return the last inference result with some extrapolation logic
+        if applicable.
+        """
+        if self.last_result is None:
+            raise RuntimeError(f"ERROR: No previous result available in {self.tool_name}.")
+        
+        frame = load_image_opencv(frame_handle)
+        updated_data = self.postprocess(self.last_result, frame.shape)
 
         return updated_data
 
@@ -112,19 +128,20 @@ class BaseVisionTool(ABC):
         """Child implements tool-specific configuration logic."""
         pass
 
+    def _warmup(self):
+        """Implements a dummy warmup run"""
+        for _ in range(4):
+            dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            inputs = self.preprocess(dummy_frame)
+            _ = self.inference(inputs)
+
+    def preprocess(self, frame: np.ndarray) -> Any:
+        """Child implements frame-to-tensor logic (resize, normalize, to-device)."""
+        return frame
+    
     @abstractmethod
     def _load_model(self) -> Any:
         """Child implements the specific model loading logic (e.g., YOLO(path))."""
-        pass
-
-    @abstractmethod
-    def _warmup(self):
-        """Child implements a dummy inference run to warm up the model."""
-        pass
-
-    @abstractmethod
-    def preprocess(self, frame: np.ndarray) -> Any:
-        """Child implements frame-to-tensor logic (resize, normalize, to-device)."""
         pass
 
     @abstractmethod
