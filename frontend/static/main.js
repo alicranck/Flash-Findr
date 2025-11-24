@@ -90,7 +90,8 @@ startButton.addEventListener('click', async () => {
     // Captioning Config
     if (toggleCaptioning.checked) {
         toolSettings.captioning = {
-            trigger: { "type": "scene_change", "threshold": 0.33 }
+            imgsz: 480,
+            trigger: { "type": "scene_change", "threshold": 0.2 }
         };
     }
 
