@@ -3,18 +3,18 @@ from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
 from .detection import OpenVocabularyDetector
-from .captioning import Captioner
+from .captioning import LlamaCppCaptioner
 from ...utils.types import FrameContext
 
 
 AVAILABLE_TOOL_TYPES = {
     'detection': OpenVocabularyDetector,
-    'captioning': Captioner
+    'captioning': LlamaCppCaptioner
 }
 
 MODEL_IDS = {
     'detection': '/home/almog_elharar/almog/Flash-Findr/app/models/yoloe-11s-seg',
-    'captioning': '/home/almog_elharar/almog/Flash-Findr/app/models/OVSmolVLM2-256M_video'
+    'captioning': 'ggml-org/SmolVLM2-256M-Video-Instruct-GGUF:Q8_0'
 }
 
 
@@ -69,5 +69,9 @@ class VisionPipeline:
             tools.append(tool_instance)
         
         return tools
+
+    def unload_tools(self):
+        for tool in self.tools:
+            tool.unload()
 
         

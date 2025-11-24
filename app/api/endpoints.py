@@ -1,13 +1,10 @@
-import yaml
 import uuid
 from typing import Dict, Any
 from fastapi import APIRouter, Query, HTTPException, Body, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse, JSONResponse
-import cv2
 
 from .engine import VideoInferenceEngine, SessionConfig
 from ..ml_core.tools.pipeline import PipelineConfig, VisionPipeline
-from ..utils.plotting import fast_plot
 from .socket_manager import ConnectionManager
 from ..utils.serialization import serialize_data
 
@@ -76,11 +73,12 @@ async def stream_video(session_id: str):
         
     except (RuntimeError, ValueError) as e:
         raise HTTPException(status_code=500, detail=f"Streaming Error: {e}")
-        
+        pipeline.unload_tools()
         return StreamingResponse(
             engine.run_inference(),
             media_type="multipart/x-mixed-replace; boundary=frame"
         )
         
     except (RuntimeError, ValueError) as e:
+        pipeline.unload_tools()
         raise HTTPException(status_code=400, detail=f"Pipeline Configuration Error: {e}")

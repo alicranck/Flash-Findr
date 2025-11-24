@@ -2,7 +2,6 @@ import asyncio
 import cv2
 from pydantic import BaseModel, Field
 from ..ml_core.tools.pipeline import VisionPipeline, PipelineConfig
-from ..utils.plotting import fast_plot
 from ..utils.image_utils import color_histogram
 from ..utils.types import FrameContext
 
