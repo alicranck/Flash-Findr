@@ -5,7 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=2">
     <script src="https://unpkg.com/konva@9.3.3/konva.min.js"></script>
 </head>
 
@@ -32,7 +35,15 @@
                 <!-- Detection Tool Card -->
                 <div class="tool-card active-card" id="card-detection">
                     <div class="card-header">
-                        <span>👁️ Detection</span>
+                        <span>
+                            <!-- SVG Icon for Detection -->
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            Detection
+                        </span>
                         <label class="switch">
                             <input type="checkbox" id="toggle-detection" checked>
                             <span class="slider round"></span>
@@ -50,7 +61,14 @@
                 <!-- Captioning Tool Card -->
                 <div class="tool-card" id="card-captioning">
                     <div class="card-header">
-                        <span>📝 Captioning</span>
+                        <span>
+                            <!-- SVG Icon for Captioning -->
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            Captioning
+                        </span>
                         <label class="switch">
                             <input type="checkbox" id="toggle-captioning">
                             <span class="slider round"></span>
@@ -61,7 +79,11 @@
                     </div>
                 </div>
 
-                <button id="startButton" class="action-btn">🚀 Initialize Stream</button>
+                <div class="control-group">
+                    <button id="initButton" class="action-btn secondary-btn">⚙️ Initialize</button>
+                    <button id="startButton" class="action-btn primary-btn" disabled>▶ Start Stream</button>
+                </div>
+                <div id="init-status" class="status-text">System not initialized</div>
             </div>
         </aside>
 
@@ -91,7 +113,7 @@
             </div>
         </main>
     </div>
-    <script src="/static/main.js"></script>
+    <script src="/static/main.js?v=2"></script>
 </body>
 
 </html>

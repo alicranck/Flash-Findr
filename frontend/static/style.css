@@ -15,7 +15,7 @@
 
 body {
     margin: 0;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
     height: 100vh;
@@ -46,6 +46,7 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     font-size: 1.5rem;
+    font-weight: 600;
 }
 
 .subtitle {
@@ -53,6 +54,7 @@ body {
     font-size: 0.8rem;
     margin-top: 5px;
     margin-bottom: 30px;
+    font-weight: 300;
 }
 
 .toolbox h3 {
@@ -63,6 +65,7 @@ body {
     margin-top: 20px;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 5px;
+    font-weight: 600;
 }
 
 /* --- Tool Cards --- */
@@ -86,6 +89,12 @@ body {
     align-items: center;
     font-weight: 600;
     margin-bottom: 10px;
+}
+
+.card-header span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .card-body {
@@ -171,24 +180,63 @@ input:checked+.slider:before {
     transform: translateX(20px);
 }
 
-/* --- Action Button --- */
-.action-btn {
-    width: 100%;
-    padding: 15px;
-    background: linear-gradient(45deg, var(--accent-secondary), var(--accent-primary));
-    border: none;
-    color: white;
-    font-weight: bold;
-    border-radius: 6px;
-    cursor: pointer;
+/* --- Action Buttons --- */
+.control-group {
+    display: flex;
+    gap: 10px;
     margin-top: 20px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: transform 0.2s;
 }
 
-.action-btn:hover {
-    transform: scale(1.02);
+.action-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    font-family: 'Outfit', sans-serif;
+}
+
+.primary-btn {
+    background: linear-gradient(45deg, var(--accent-secondary), var(--accent-primary));
+}
+
+.primary-btn:disabled {
+    background: #333;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.secondary-btn {
+    background: #2a2d3a;
+    border: 1px solid var(--border-color);
+}
+
+.secondary-btn:hover:not(:disabled) {
+    background: #3a3d4a;
+    border-color: var(--text-muted);
+}
+
+.secondary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.status-text {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 /* --- Main Stage --- */
@@ -311,4 +359,22 @@ input:checked+.slider:before {
     background: rgba(0, 255, 157, 0.2);
     color: var(--success);
     border: 1px solid var(--success);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 242, 255, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 242, 255, 0);
+    }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
 }

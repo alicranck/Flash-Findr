@@ -1,4 +1,5 @@
 // --- UI Elements ---
+console.log("Main.js loaded"); // Debugging
 const videoUrlInput = document.getElementById('videoUrl');
 const startButton = document.getElementById('startButton');
 const videoStreamImg = document.getElementById('video-stream');
@@ -49,6 +50,7 @@ function toggleTool(card, body, isActive) {
 
 // --- Logging System ---
 function log(message) {
+    console.log(message); // Debugging
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     const time = new Date().toLocaleTimeString();
@@ -63,7 +65,12 @@ function setStatus(status) {
 }
 
 // --- Stream Logic ---
-startButton.addEventListener('click', async () => {
+// --- Stream Logic ---
+let currentSessionId = null;
+const initButton = document.getElementById('initButton');
+const initStatus = document.getElementById('init-status');
+
+initButton.addEventListener('click', async () => {
     const videoUrl = videoUrlInput.value;
     if (!videoUrl) {
         log("[ERROR] No video URL provided.");
@@ -101,16 +108,18 @@ startButton.addEventListener('click', async () => {
 
     const payload = {
         video_url: videoUrl,
-        pipeline: {
+        pipeline_configuration: {
             tool_settings: toolSettings
         }
     };
 
-    log("[SYSTEM] Initializing session...");
-    startButton.disabled = true;
-    startButton.textContent = "⏳ Initializing...";
+    log("[SYSTEM] Creating session...");
+    initButton.disabled = true;
+    initButton.textContent = "⏳ Creating...";
+    initStatus.textContent = "Creating session...";
 
     try {
+        // 1. Create Session
         const response = await fetch('/session/init', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -123,16 +132,53 @@ startButton.addEventListener('click', async () => {
         }
 
         const data = await response.json();
-        const sessionId = data.session_id;
+        currentSessionId = data.session_id;
+        log(`[SYSTEM] Session created: ${currentSessionId}`);
 
-        log(`[SYSTEM] Session created: ${sessionId}`);
-        startStream(sessionId);
+        // 2. Initialize Pipeline (Load Models)
+        log("[SYSTEM] Initializing pipeline (loading models)...");
+        initButton.textContent = "⏳ Loading Models...";
+        initStatus.textContent = "Loading models... (this may take a moment)";
+
+        const initResponse = await fetch(`/session/${currentSessionId}/initialize_pipeline`, {
+            method: 'POST'
+        });
+
+        if (!initResponse.ok) {
+            const err = await initResponse.json();
+            throw new Error(err.detail || "Pipeline init failed");
+        }
+
+        log("[SYSTEM] Pipeline initialized successfully.");
+        initStatus.textContent = "System Ready. Click Start to stream.";
+        initStatus.style.color = "var(--success)";
+
+        initButton.textContent = "✅ Initialized";
+        startButton.disabled = false;
+        startButton.classList.add('pulse-animation'); // Optional visual cue
 
     } catch (error) {
         log(`[ERROR] ${error.message}`);
-        startButton.disabled = false;
-        startButton.textContent = "🚀 Initialize Stream";
+        initButton.disabled = false;
+        initButton.textContent = "⚙️ Initialize";
+        initStatus.textContent = "Initialization failed.";
+        initStatus.style.color = "var(--danger)";
+        currentSessionId = null;
     }
+});
+
+startButton.addEventListener('click', () => {
+    if (!currentSessionId) {
+        log("[ERROR] No active session. Initialize first.");
+        return;
+    }
+
+    log(`[SYSTEM] Starting stream for session: ${currentSessionId}`);
+    startButton.disabled = true;
+    startButton.textContent = "🔴 Streaming";
+    initStatus.textContent = "Streaming active";
+
+    startStream(currentSessionId);
 });
 
 // --- Visualization Logic (Konva) ---
@@ -312,24 +358,6 @@ function drawMetadata(data) {
             }
         });
     }
-
-    // Draw Masks
-    // if (data.masks) {
-    //     data.masks.forEach(mask => {
-    //         // mask is a list of [x, y] points
-    //         const points = mask.flatMap(pt => [pt[0] * scaleX, pt[1] * scaleY]);
-
-    //         const poly = new Konva.Line({
-    //             points: points,
-    //             fill: 'rgba(0, 242, 255, 0.2)', // Semi-transparent cyan
-    //             stroke: 'cyan',
-    //             strokeWidth: 1,
-    //             closed: true
-    //         });
-    //         layer.add(poly);
-    //     });
-    // }
-
     layer.batchDraw();
 }
 

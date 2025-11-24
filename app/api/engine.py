@@ -6,12 +6,6 @@ from ..utils.image_utils import color_histogram
 from ..utils.types import FrameContext
 
 
-class SessionConfig(BaseModel):
-    """Defines the configuration for a streaming session."""
-    video_url: str = Field(..., description="URL or path to the video source")
-    pipeline: PipelineConfig = Field(..., description="Pipeline configuration")
-
-
 class VideoInferenceEngine:
 
     def __init__(self, tool_pipeline: VisionPipeline, video_path: str):
