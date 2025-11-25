@@ -129,7 +129,7 @@ initButton.addEventListener('click', async () => {
             log("[ERROR] Detection enabled but vocabulary is empty.");
             return;
         }
-        toolSettings.detection = {
+        toolSettings.ov_detection = {
             vocabulary: vocab,
             imgsz: 480,
             conf_threshold: parseFloat(confidenceInput.value),
@@ -302,10 +302,6 @@ function drawMetadata(data) {
         captionOverlay.textContent = data.caption;
         captionOverlay.classList.remove('hidden');
     } else {
-        // Optional: Auto-hide if no caption is sent for a while?
-        // For now, we keep it until a new one comes or explicitly cleared.
-        // If you want to clear it when data.caption is missing/null:
-        // captionOverlay.classList.add('hidden');
     }
 
     // Calculate scaling factors
@@ -386,8 +382,9 @@ function drawMetadata(data) {
                     shadowOpacity: 0.5
                 }));
 
+                const className = (data.class_names && data.class_names[box.cls]) ? data.class_names[box.cls] : box.cls;
                 tooltip.add(new Konva.Text({
-                    text: `${data.class_names[box.cls]}: ${box.conf.toFixed(2)}`,
+                    text: `${className}: ${box.conf.toFixed(2)}`,
                     fontFamily: 'monospace',
                     fontSize: 14,
                     padding: 5,

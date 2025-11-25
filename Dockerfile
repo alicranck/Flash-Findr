@@ -1,5 +1,5 @@
 # Use NVIDIA CUDA base image for GPU support
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM pytorch/pytorch:2.8.0-cuda12.6-cudnn9-devel
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,12 +20,10 @@ RUN apt-get update && apt-get install -y \
 
 # Build llama.cpp with CUDA support
 WORKDIR /tmp
-RUN git clone https://github.com/ggerganov/llama.cpp.git \
+RUN git clone https://github.com/ggml-org/llama.cpp \
     && cd llama.cpp \
-    && make LLAMA_CUDA=1 \
-    && cp llama-server /usr/local/bin/ \
-    && cd .. \
-    && rm -rf llama.cpp
+    && cmake -B build -DGGML_CUDA=ON -DLLAMA_CURL=OFF\
+    && cmake --build build --config Release -j 8
 
 # Set working directory
 WORKDIR /app

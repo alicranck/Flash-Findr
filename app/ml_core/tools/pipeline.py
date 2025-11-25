@@ -1,3 +1,5 @@
+import os
+import yaml
 from typing import List, Dict, Any
 
 from pydantic import BaseModel, Field
@@ -8,7 +10,7 @@ from ...utils.types import FrameContext
 
 
 AVAILABLE_TOOL_TYPES = {
-    'detection': OpenVocabularyDetector,
+    'ov_detection': OpenVocabularyDetector,
     'captioning': LlamaCppCaptioner
 }
 
@@ -19,7 +21,7 @@ class PipelineConfig(BaseModel):
     tool_settings: Dict[str, Any] = Field(
         default_factory=dict,
         description="Nested dictionary of tool-specific static configuration " \
-                        "(e.g., {'detection': {'vocabulary': ['person', 'car']}})."
+                        "(e.g., {'ov_detection': {'vocabulary': ['person', 'car']}})."
     )
 
 
@@ -58,9 +60,11 @@ class VisionPipeline:
             
             tool_class = AVAILABLE_TOOL_TYPES[tool_type]
             tool_config = self.config.tool_settings.get(tool_type, {})
-            tool_model_id = MODEL_IDS[tool_type]
+            tool_base_config = _get_base_tool_config(tool_type)
+            tool_config.update(tool_base_config)
 
-            tool_instance = tool_class(model_id=tool_model_id, config=tool_config)
+            tool_instance = tool_class(model_id=tool_config.pop('model'), 
+                                                            config=tool_config)
             tools.append(tool_instance)
         
         return tools
@@ -68,5 +72,14 @@ class VisionPipeline:
     def unload_tools(self):
         for tool in self.tools:
             tool.unload_tool()
+
+
+def _get_base_tool_config(tool_type: str) -> Dict[str, Any]:
+    configs_dir = os.path.join(os.path.dirname(__file__), '..', 'configs')
+    config_path = os.path.join(configs_dir, f'{tool_type}.yaml')
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
+
 
         

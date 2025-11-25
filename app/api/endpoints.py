@@ -41,7 +41,6 @@ async def init_session(
     """
     try:
         session_id = str(uuid.uuid4())
-        # Store config for later initialization
         SESSION_STORE[session_id] = {
             "pipeline": None, 
             "video_url": session_config.video_url,

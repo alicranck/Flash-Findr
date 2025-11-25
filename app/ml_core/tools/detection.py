@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from app.utils.types import ImageHandle, List, NumpyMask, Any
 from ultralytics import YOLOE  # type: ignore
 from ultralytics.engine.results import Boxes  # type: ignore
@@ -21,6 +22,7 @@ class OpenVocabularyDetector(BaseVisionTool):
         self.imgsz: int
         self.conf_threshold: float
         self.vocabulary: List[str] | None
+        self.tracking_history: Dict[str, List]
         super().__init__(model_id, config, device)
 
     def _configure(self, config: dict):
@@ -45,6 +47,8 @@ class OpenVocabularyDetector(BaseVisionTool):
         model.set_classes(self.vocabulary, pos_embeddings)
         onnx_model = self.compile_onnx_model(model, imgsz=self.imgsz)
 
+        self.tracking_history = defaultdict(list)
+
         return onnx_model
 
     def set_vocabulary(self, classes: list):
@@ -54,10 +58,19 @@ class OpenVocabularyDetector(BaseVisionTool):
 
     def inference(self, model_inputs: np.ndarray) -> Any:
         """Runs YOLO inference."""
-        return self.model.track(model_inputs,
+        results = self.model.track(model_inputs,
                                  conf=self.conf_threshold,
                                   imgsz=self.imgsz,
-                                   tracker='bytetrack.yaml')
+                                   tracker='bytetrack.yaml',
+                                    persist=True)
+
+        track_ids = results.boxes.id.int().cpu().tolist()
+        boxes = results.boxes.xyxy.cpu().tolist()
+
+        for track_id, box in zip(track_ids, boxes):
+            self.tracking_history[track_id].append(box)
+
+        return results
 
     def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         """Parses YOLO results and updates the data dict."""
@@ -65,13 +78,28 @@ class OpenVocabularyDetector(BaseVisionTool):
         data = {
             "boxes": results.boxes,
             "masks": results.masks if results.masks is not None else None,
-            "keypoints": results.keypoints
+            "keypoints": results.keypoints,
+            "class_names": results.names
         }
         return data
     
     def extrapolate_last(self, frame_handle: ImageHandle) -> Any:
-        # TODO implement motion prediction based extrapolation
-        return super().extrapolate_last(frame_handle)
+        extrapolated_boxes = {}
+
+        for track_id, boxes in self.tracking_history.items():
+            extrapolated_boxes[track_id] = self.extrapolate_box(boxes)
+
+        results = self.last_result
+        results.boxes.xyxy = extrapolated_boxes
+
+        return results
+
+    @staticmethod
+    def extrapolate_box(boxes: list) -> list:
+        diffs = np.diff(boxes, axis=0)
+        mean_diff = np.mean(diffs, axis=0)
+        next_box = boxes[-1] + mean_diff
+        return next_box
 
     @staticmethod
     def compile_onnx_model(model, imgsz: int = DEFAULT_IMAGE_SIZE):
