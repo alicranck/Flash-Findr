@@ -28,6 +28,15 @@
                     <input type="text" id="videoUrl"
                         value="https://cdn.pixabay.com/video/2020/11/13/56310-479197605_large.mp4"
                         placeholder="RTSP / MP4 URL">
+                    <form action="/upload_file" method="POST" enctype="multipart/form-data" id="videoFileForm">
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <label for="videoFile" class="action-btn secondary-btn"
+                                style="flex-grow: 1; text-align: center;">Choose File</label>
+                            <input type="file" id="videoFile" name="video" accept="video/*" style="display: none;">
+                            <button type="submit" id="uploadButton" class="action-btn secondary-btn"
+                                style="flex-grow: 1;">Upload</button>
+                        </div>
+                    </form>
                 </div>
 
                 <h3>Active Tools</h3>

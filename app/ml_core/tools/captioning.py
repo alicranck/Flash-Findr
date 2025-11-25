@@ -4,6 +4,7 @@ import time
 import socket
 import requests
 import atexit
+import shutil
 from app.utils.types import ImageHandle, Any
 from transformers import AutoProcessor, AutoTokenizer
 from optimum.intel.openvino.modeling_visual_language import OVModelForVisualCausalLM, OVWeightQuantizationConfig
@@ -117,8 +118,15 @@ class LlamaCppCaptioner(BaseVisionTool):
         self.port = self._find_free_port()
         self.server_url = f"http://127.0.0.1:{self.port}"
         
+        server_path = os.environ.get("LLAMA_SERVER_PATH") or shutil.which("llama-server")
+        if not server_path:
+             # Fallback to the old hardcoded path for local dev if not found
+             server_path = "/home/linuxbrew/.linuxbrew/bin/llama-server"
+             if not os.path.exists(server_path):
+                 raise RuntimeError("llama-server executable not found. Please install llama.cpp or set LLAMA_SERVER_PATH.")
+
         cmd = [
-            "/home/linuxbrew/.linuxbrew/bin/llama-server",
+            server_path,
             f"-{model_locator}", model_path,
             "--port", str(self.port),
             "--n-gpu-layers", "100" if self.device == "cuda" else "0",

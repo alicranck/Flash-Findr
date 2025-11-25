@@ -1,8 +1,9 @@
+import os
 import uuid
 from typing import Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 
-from fastapi import APIRouter, Query, HTTPException, Body, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, HTTPException, Body, WebSocket, WebSocketDisconnect, File, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from .engine import VideoInferenceEngine
@@ -10,6 +11,10 @@ from ..ml_core.tools.pipeline import PipelineConfig, VisionPipeline
 from .socket_manager import ConnectionManager
 from ..utils.serialization import serialize_data
 
+
+cache_dir = "./cache"
+if not os.path.exists(cache_dir):
+    os.makedirs(cache_dir)
 
 router = APIRouter()
 
@@ -78,6 +83,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
 
+
+@router.post("/upload_file")
+async def upload_file(video: UploadFile = File(...)):
+    file_path = os.path.join(cache_dir, video.filename)
+    with open(file_path, "wb") as f:
+        f.write(video.file.read())
+    return JSONResponse(content={"file_path": file_path})
+    
 
 @router.get("/stream/{session_id}")
 async def stream_video(session_id: str):

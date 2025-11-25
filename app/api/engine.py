@@ -1,7 +1,7 @@
 import asyncio
 import cv2
-from pydantic import BaseModel, Field
-from ..ml_core.tools.pipeline import VisionPipeline, PipelineConfig
+import os
+from ..ml_core.tools.pipeline import VisionPipeline
 from ..utils.image_utils import color_histogram
 from ..utils.types import FrameContext
 
@@ -9,12 +9,13 @@ from ..utils.types import FrameContext
 class VideoInferenceEngine:
 
     def __init__(self, tool_pipeline: VisionPipeline, video_path: str):
-        self.video_path = video_path
+        self.video_path = self._resolve_video_source(video_path)
         self.tool_pipeline = tool_pipeline
         self.last_frame_idx = -1
         self.last_frame = None
 
     async def run_inference(self, on_data=None):
+        
         cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
             raise RuntimeError(f"Error opening video stream or file: {self.video_path}")
@@ -54,5 +55,18 @@ class VideoInferenceEngine:
         hist2 = color_histogram(frame2)
         dist = cv2.compareHist(hist1, hist2, cv2.HISTCMP_BHATTACHARYYA)
         return dist
+
+    def _resolve_video_source(self, video_path: str) -> str:
+        """
+        Resolves the video source from a path or URL.
+        Handles local files, YouTube links, and direct URLs.
+        """
+        if os.path.exists(video_path):
+            return os.path.abspath(video_path)
+        
+        if "youtube.com" in video_path or "youtu.be" in video_path:
+            raise ValueError("YouTube links are not supported.")
+
+        return video_path
 
 

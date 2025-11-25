@@ -6,6 +6,8 @@ const videoStreamImg = document.getElementById('video-stream');
 const placeholderOverlay = document.getElementById('placeholder-overlay');
 const logContent = document.getElementById('log-content');
 const statusIndicator = document.getElementById('status-indicator');
+const videoFileInput = document.getElementById('videoFile');
+const videoFileForm = document.getElementById('videoFileForm');
 
 // Tool Cards
 const toggleDetection = document.getElementById('toggle-detection');
@@ -64,7 +66,47 @@ function setStatus(status) {
     statusIndicator.textContent = status;
 }
 
-// --- Stream Logic ---
+
+// --- Video File Upload ---
+videoFileInput.addEventListener('change', (event) => {
+    event_target = event.target;
+    if (event_target.files && event_target.files.length > 0) {
+        videoUrlInput.value = `${event_target.files[0].name}`;
+    }
+});
+
+videoFileForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const submitButton = event.submitter || videoFileForm.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('loading');
+    }
+
+    try {
+        const event_target = event.target;
+        const formData = new FormData(event_target);
+        const file = formData.get('video');
+        if (file) {
+            const response = await fetch('/upload_file', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            log(`[SYSTEM] File uploaded successfully: ${data.file_path}`);
+            videoUrlInput.value = data.file_path;
+            event_target.reset();
+        }
+    } catch (error) {
+        log(`[ERROR] File upload failed: ${error.message}`);
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+        }
+    }
+});
+
 // --- Stream Logic ---
 let currentSessionId = null;
 const initButton = document.getElementById('initButton');
@@ -89,6 +131,7 @@ initButton.addEventListener('click', async () => {
         }
         toolSettings.detection = {
             vocabulary: vocab,
+            imgsz: 480,
             conf_threshold: parseFloat(confidenceInput.value),
             trigger: { "type": "stride", "value": 3 }
         };

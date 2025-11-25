@@ -12,11 +12,6 @@ AVAILABLE_TOOL_TYPES = {
     'captioning': LlamaCppCaptioner
 }
 
-MODEL_IDS = {
-    'detection': '/home/almog_elharar/almog/Flash-Findr/app/models/yoloe-11s-seg',
-    'captioning': 'ggml-org/SmolVLM2-256M-Video-Instruct-GGUF:Q8_0'
-}
-
 
 class PipelineConfig(BaseModel):
     """Defines the expected structure for the JSON configuration body.
@@ -72,6 +67,6 @@ class VisionPipeline:
 
     def unload_tools(self):
         for tool in self.tools:
-            tool.unload()
+            tool.unload_tool()
 
         
