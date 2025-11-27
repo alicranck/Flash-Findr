@@ -6,6 +6,9 @@ from ..utils.image_utils import color_histogram
 from ..utils.types import FrameContext
 
 
+DELAY_SECONDS_DEFAULT = 3.0
+MAX_QUEUE_SIZE = 300
+
 class VideoInferenceEngine:
 
     def __init__(self, tool_pipeline: VisionPipeline, video_path: str):
@@ -14,40 +17,88 @@ class VideoInferenceEngine:
         self.last_frame_idx = -1
         self.last_frame = None
 
-    async def run_inference(self, on_data=None):
+    async def run_inference(self, on_data=None, 
+                             buffer_delay: float = DELAY_SECONDS_DEFAULT,
+                              max_queue_size: int = MAX_QUEUE_SIZE):
+        queue = asyncio.Queue(maxsize=max_queue_size)
+        producer_task = asyncio.create_task(self._inference_producer(queue))
+
+        print(f"Buffering for {buffer_delay} seconds...")
+        await asyncio.sleep(buffer_delay)
+
+        try:
+            while True:
+                if producer_task.done() and queue.empty():
+                    break
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=1.0)
+                    if item is None:
+                        break
+
+                    frame_bytes, data = item
+                    if on_data:
+                        await on_data(data)
+
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+                except asyncio.TimeoutError:
+                    continue
         
+        except Exception as e:
+            print(f"Streaming Error: {e}")
+        finally:
+            if not producer_task.done():
+                producer_task.cancel()
+                try:
+                    await producer_task
+                except asyncio.CancelledError:
+                    pass
+
+    async def _inference_producer(self, queue: asyncio.Queue):
         cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
-            raise RuntimeError(f"Error opening video stream or file: {self.video_path}")
+            print(f"Error opening video stream: {self.video_path}")
+            await queue.put(None)
+            return
+        try:
+            while True:
+                result = await asyncio.to_thread(self._process_next_frame, cap)                
+                if result is None:
+                    break
 
-        while True:
-            # Yield control to event loop to allow WS connections
-            await asyncio.sleep(0)
-            
-            ret, frame = cap.read()
-            if not ret:
-                break
+                await queue.put(result)
 
-            scene_change_score = 0.0
-            if self.last_frame is not None:
-                 scene_change_score = self.hist_distance(self.last_frame, frame)
-            else:
-                 scene_change_score = 1.0
+        except Exception as e:
+            print(f"Producer Error: {e}")
+        finally:
+            cap.release()
+            await queue.put(None)  # Signal end of stream
 
-            context = FrameContext(frame_idx=self.last_frame_idx + 1,
-                                   scene_change_score=scene_change_score,
-                                   timestamp=cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
-            processed_frame, data = self.tool_pipeline.run_pipeline(frame, context=context)
-            
-            if on_data:
-                await on_data(data)
-            
-            self.last_frame_idx += 1
-            self.last_frame = frame
+    def _process_next_frame(self, cap):
+        ret, frame = cap.read()
+        if not ret:
+            return None
 
-            _, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        scene_change_score = 0.0
+        if self.last_frame is not None:
+                scene_change_score = self.hist_distance(self.last_frame, frame)
+        else:
+                scene_change_score = 1.0
+
+        context = FrameContext(frame_idx=self.last_frame_idx + 1,
+                                scene_change_score=scene_change_score,
+                                timestamp=cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
+        
+        processed_frame, data = self.tool_pipeline.run_pipeline(frame, context=context)
+        
+        self.last_frame_idx += 1
+        self.last_frame = frame
+
+        _, buffer = cv2.imencode('.jpg', processed_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        frame_bytes = buffer.tobytes()
+        
+        return frame_bytes, data
             
     @staticmethod
     def hist_distance(frame1, frame2) -> float:

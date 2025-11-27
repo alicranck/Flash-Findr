@@ -73,34 +73,28 @@ class OpenVocabularyDetector(BaseVisionTool):
 
         self.extrapolated_frames = 0
 
-        for i in range(len(detections)):
-
-            xyxy_box = detections.xyxy[i]
-            track_id = detections.tracker_id[i]
-            confidence = detections.confidence[i]
-            class_id = detections.class_id[i]
-
-            self.tracking_history[track_id].append({"xyxy": xyxy_box,
-                                                    "conf": confidence,
-                                                    "cls": class_id,
-                                                    "id": track_id})
+        valid_detections = []
+        for i, track_id in enumerate(detections.tracker_id):
+            if track_id is None or track_id == -1:
+                continue
+            box_struct = {
+                "xyxy": detections.xyxy[i],
+                "conf": detections.confidence[i],
+                "cls": detections.class_id[i],
+                "id": track_id
+            }
+            self.tracking_history[track_id].append(box_struct)
+            valid_detections.append(box_struct)
 
         finished_tracks = self.tracking_history.keys() - set(detections.tracker_id)
         for ft_id in finished_tracks:
             ft = self.tracking_history.pop(ft_id)
 
-        return results
+        return {"boxes": valid_detections, "class_names": results[0].names}
 
     def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         """Parses YOLO results and updates the data dict."""
-        results = raw_output[0]
-        data = {
-            "boxes": results.boxes,
-            "masks": results.masks,
-            "keypoints": results.keypoints,
-            "class_names": results.names
-        }
-        return data
+        return raw_output
     
     def extrapolate_last(self, frame_handle: ImageHandle) -> Any:
         extrapolated_boxes = []
@@ -110,8 +104,8 @@ class OpenVocabularyDetector(BaseVisionTool):
                                         "conf": boxes[-1]["conf"],
                                         "cls": boxes[-1]["cls"],
                                         "id": track_id})
-
-        results = self.postprocess(self.last_result, None)
+        
+        results = self.last_result
         if len(extrapolated_boxes) > 0:
             results["boxes"] = extrapolated_boxes
 
