@@ -1,17 +1,19 @@
 import os
 from collections import defaultdict
-from app.utils.types import ImageHandle, List, NumpyMask, Any
 from trackers import SORTTracker
 import supervision as sv
 from ultralytics import YOLOE  # type: ignore
 from ultralytics.engine.results import Boxes  # type: ignore
+import cv2
 import numpy as np
 
 from .base_tool import BaseVisionTool, ToolKey
 from ...utils.image_utils import load_image_pil
+from ...utils.tracking import BoxKalmanFilter
+from ...utils.types import ImageHandle, List, NumpyMask, Any
+from ...utils.locations import APP_DIR
 
 
-current_dir = __file__.rsplit("/", 1)[0]
 DEFAULT_IMAGE_SIZE = 640
 DEFAULT_CONFIDENCE_THRESHOLD = 0.25
 
@@ -25,9 +27,8 @@ class OpenVocabularyDetector(BaseVisionTool):
         self.imgsz: int
         self.conf_threshold: float
         self.vocabulary: List[str] | None
-        self.extrapolated_frames: int
         self.tracker: SORTTracker
-        self.tracking_history: Dict[str, List]
+        self.kalman_filters: Dict[str, BoxKalmanFilter] = {}
         super().__init__(model_id, config, device)
 
     def _configure(self, config: dict):
@@ -37,13 +38,18 @@ class OpenVocabularyDetector(BaseVisionTool):
         return
 
     def _load_model(self):
-
+        """
+        Loads the YOLOE model and initializes the SORT tracker.
+        
+        Returns:
+            The compiled ONNX/OpenVINO model ready for inference.
+        """
         if self.vocabulary is None:
             raise ValueError("OpenVocabularyDetector requires a 'vocabulary' list in the config.")
         
         # check if file exists else download to models/
         if not os.path.isfile(self.model_id):
-            model_path = os.path.join(f"{current_dir}/../../models", self.model_id)
+            model_path = APP_DIR / "models" / self.model_id
             model = YOLOE(model_path)
         else:
             model = YOLOE(self.model_id)
@@ -73,63 +79,43 @@ class OpenVocabularyDetector(BaseVisionTool):
 
         self.extrapolated_frames = 0
 
-        valid_detections = []
         for i, track_id in enumerate(detections.tracker_id):
             if track_id is None or track_id == -1:
                 continue
-            box_struct = {
-                "xyxy": detections.xyxy[i],
-                "conf": detections.confidence[i],
-                "cls": detections.class_id[i],
-                "id": track_id
-            }
-            self.tracking_history[track_id].append(box_struct)
-            valid_detections.append(box_struct)
-
-        finished_tracks = self.tracking_history.keys() - set(detections.tracker_id)
+            # Update Kalman Filter
+            if track_id not in self.kalman_filters:
+                self.kalman_filters[track_id] = BoxKalmanFilter(detections.xyxy[i], 
+                                                                detections.class_id[i], 
+                                                                detections.confidence[i])
+            else:
+                self.kalman_filters[track_id].update(detections.xyxy[i])
+                
+        # Remove finished tracks
+        finished_tracks = set(self.kalman_filters.keys()) - set(detections.tracker_id)
         for ft_id in finished_tracks:
-            ft = self.tracking_history.pop(ft_id)
+            del self.kalman_filters[ft_id]
 
-        return {"boxes": valid_detections, "class_names": results[0].names}
+        return {"tracks": self.kalman_filters, "class_names": results[0].names}
 
     def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
         """Parses YOLO results and updates the data dict."""
-        return raw_output
+        output = {
+            "boxes": [{"xyxy": kf.xyxy, "cls": kf.class_idx, "conf": kf.conf, "id": tid} 
+                                                for tid, kf in raw_output["tracks"].items()],
+            "class_names": raw_output["class_names"]
+        }
+        return output
     
     def extrapolate_last(self, frame_handle: ImageHandle) -> Any:
-        extrapolated_boxes = []
-        self.extrapolated_frames += 1
-        for track_id, boxes in self.tracking_history.items():
-            extrapolated_boxes.append({"xyxy": self.extrapolate_box(boxes) ,
-                                        "conf": boxes[-1]["conf"],
-                                        "cls": boxes[-1]["cls"],
-                                        "id": track_id})
-        
-        results = self.last_result
-        if len(extrapolated_boxes) > 0:
-            results["boxes"] = extrapolated_boxes
+        for track_id, kalman_filter in self.kalman_filters.items():
+            new_xyxy = kalman_filter.predict()
+            kalman_filter.update(new_xyxy)
+
+        results = self.postprocess({"tracks": self.kalman_filters,
+                                    "class_names": self.last_result["class_names"]},
+                                    None)
 
         return results
-
-    def extrapolate_box(self, boxes: list) -> list:
-
-        if self.trigger.get("value", 1) == 1:
-            raise ValueError("Frame extrapolation should only be called when "\
-                                    "trigger value is greater than 1")
-
-        if self.extrapolated_frames % self.trigger["value"] == 0:
-            raise ValueError("Frame extrapolation should only be called when inference was" \
-                                                    "not run. check detection logic")
-
-        xyxy_boxes = np.array([b["xyxy"] for b in boxes]).squeeze()
-        diffs = np.diff(xyxy_boxes, axis=0)
-        mean_diff = np.ma.average(diffs, axis=0, 
-                            weights=range(len(diffs)))
-        
-        extrapolation_factor = self.extrapolated_frames / self.trigger["value"]
-        next_xyxy_box = xyxy_boxes[-1] + (mean_diff * extrapolation_factor)
-        
-        return next_xyxy_box.tolist()
 
     @staticmethod
     def compile_onnx_model(model, imgsz):
@@ -145,17 +131,7 @@ class OpenVocabularyDetector(BaseVisionTool):
             data_type=Boxes,
             description="Detected bounding boxes",
         )
-        masks = ToolKey(
-            key_name="masks",
-            data_type=NumpyMask,
-            description="Detected masks (if applicable)",
-        )
-        keypoints = ToolKey(
-            key_name="keypoints",
-            data_type=any,
-            description="Detected keypoints (if applicable)",
-        )
-        return [boxes, masks, keypoints]
+        return [boxes]
     
     @property
     def processing_input_keys(self) -> list:
