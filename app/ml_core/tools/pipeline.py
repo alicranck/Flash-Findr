@@ -33,7 +33,17 @@ class VisionPipeline:
         self.tools = self._initialize_tools()
 
     def run_pipeline(self, frame: Any, context: FrameContext = None) -> Dict[str, Any]:
-
+        """
+        Executes the pipeline on a single frame.
+        Iterates through all initialized tools and aggregates their results.
+        
+        Args:
+            frame (Any): The input video frame (usually a numpy array).
+            context (FrameContext, optional): Metadata about the current frame (index, timestamp, etc.).
+            
+        Returns:
+            Dict[str, Any]: A dictionary containing the original frame and the aggregated results from all tools.
+        """
         data = {}
         for tool in self.tools:
             tool_results = tool.process(frame, data, context=context)

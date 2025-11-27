@@ -10,8 +10,19 @@ DELAY_SECONDS_DEFAULT = 3.0
 MAX_QUEUE_SIZE = 300
 
 class VideoInferenceEngine:
-
+    """
+    Orchestrates the video processing pipeline.
+    Handles video reading, pipeline execution, and frame serving.
+    Uses a producer-consumer pattern to ensure smooth streaming.
+    """
     def __init__(self, tool_pipeline: VisionPipeline, video_path: str):
+        """
+        Initializes the VideoInferenceEngine.
+
+        Args:
+            tool_pipeline (VisionPipeline): The vision pipeline to process frames.
+            video_path (str): Path to the video file or URL.
+        """
         self.video_path = self._resolve_video_source(video_path)
         self.tool_pipeline = tool_pipeline
         self.last_frame_idx = -1
@@ -20,6 +31,17 @@ class VideoInferenceEngine:
     async def run_inference(self, on_data=None, 
                              buffer_delay: float = DELAY_SECONDS_DEFAULT,
                               max_queue_size: int = MAX_QUEUE_SIZE):
+        """
+        Starts the inference process and yields processed frames.
+        
+        Args:
+            on_data (callable, optional): Async callback for sending metadata to the client.
+            buffer_delay (float): Time in seconds to buffer before starting the stream.
+            max_queue_size (int): Maximum number of items in the producer-consumer queue.
+            
+        Yields:
+            bytes: MJPEG frame chunks.
+        """
         queue = asyncio.Queue(maxsize=max_queue_size)
         producer_task = asyncio.create_task(self._inference_producer(queue))
 

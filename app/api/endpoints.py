@@ -37,7 +37,12 @@ async def init_session(
 ):
     """
     Initializes a streaming session with the provided configuration.
-    Returns a session_id that can be used to consume the stream via GET.
+    
+    Args:
+        session_config (SessionConfig): The configuration for the session, including video source and pipeline settings.
+        
+    Returns:
+        JSONResponse: A JSON object containing the assigned `session_id`.
     """
     try:
         session_id = str(uuid.uuid4())
@@ -55,7 +60,13 @@ async def init_session(
 async def initialize_pipeline(session_id: str):
     """
     Triggers the loading of models for the specified session.
-    This step must be called before streaming.
+    This step is resource-intensive and must be called before streaming begins.
+    
+    Args:
+        session_id (str): The ID of the session to initialize.
+        
+    Returns:
+        JSONResponse: Status of the initialization.
     """
     if session_id not in SESSION_STORE:
         raise HTTPException(status_code=404, detail="Session not found.")

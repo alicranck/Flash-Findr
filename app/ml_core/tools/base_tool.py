@@ -5,12 +5,19 @@ from PIL import Image
 
 from ...utils.types import ImageHandle, List, Any, FrameContext
 from ...utils.image_utils import load_image_opencv
+from ...utils.locations import APP_DIR
 
 
 class ToolKey:
     """
     A descriptor for a data key provided or required by a tool.
-    This is the core of the "manifest."
+    This acts as a manifest entry for the tool's inputs and outputs.
+    
+    Attributes:
+        key_name (str): The name of the key in the data dictionary.
+        data_type (Any): The expected data type of the value.
+        description (str): A brief description of what this data represents.
+        required (bool): Whether this key is mandatory for the tool to function.
     """
     def __init__(self, key_name: str, data_type: Any, description: str,
                  required: bool = False):
@@ -149,13 +156,19 @@ class BaseVisionTool(ABC):
         pass
 
     def _warmup(self):
-        """Implements a dummy warmup run"""
+        """
+        Performs a dummy inference run to initialize the model on the device.
+        This helps avoid latency spikes during the first real inference.
+        """
         print("INFO: Warming up model...")
-        for _ in range(4):
-            # dummy_frame = np.zeros((400, 640, 3), dtype=np.uint8)
-            image = Image.open("/home/alicranck/almog/projects/Flash-Findr/app/ferrari-e-suv-2-copy-680287cac36b2.jpg")
-            inputs = self.preprocess(image)
-            _ = self.inference(inputs)
+        try:
+            for _ in range(4):
+                dummy_image = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
+                inputs = self.preprocess(dummy_image)
+                _ = self.inference(inputs)
+            print("INFO: Warmup complete.")
+        except Exception as e:
+            print(f"WARN: Model warmup failed: {e}")
 
     def preprocess(self, frame: np.ndarray) -> Any:
         """Child implements frame-to-tensor logic (resize, normalize, to-device)."""

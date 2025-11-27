@@ -3,11 +3,18 @@ from fastapi import WebSocket
 
 
 class ConnectionManager:
+    """
+    Manages WebSocket connections for streaming sessions.
+    Allows broadcasting messages to all clients connected to a specific session.
+    """
     def __init__(self):
         # Map session_id -> List of WebSockets
         self.active_connections: Dict[str, List[WebSocket]] = {}
 
     async def connect(self, session_id: str, websocket: WebSocket):
+        """
+        Accepts a new WebSocket connection and adds it to the session's pool.
+        """
         await websocket.accept()
         if session_id not in self.active_connections:
             self.active_connections[session_id] = []
