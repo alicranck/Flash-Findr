@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import torch
+from PIL import Image
 
 from ...utils.types import ImageHandle, List, Any, FrameContext
 from ...utils.image_utils import load_image_opencv
@@ -39,6 +40,7 @@ class BaseVisionTool(ABC):
         
         # Trigger configuration
         self.trigger = config.get('trigger', {})
+        print(f"INFO: Trigger for {self.tool_name}: {self.trigger}")
 
         self.load_tool(config)
 
@@ -148,9 +150,11 @@ class BaseVisionTool(ABC):
 
     def _warmup(self):
         """Implements a dummy warmup run"""
+        print("INFO: Warming up model...")
         for _ in range(4):
-            dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            inputs = self.preprocess(dummy_frame)
+            # dummy_frame = np.zeros((400, 640, 3), dtype=np.uint8)
+            image = Image.open("/home/alicranck/almog/projects/Flash-Findr/app/ferrari-e-suv-2-copy-680287cac36b2.jpg")
+            inputs = self.preprocess(image)
             _ = self.inference(inputs)
 
     def preprocess(self, frame: np.ndarray) -> Any:

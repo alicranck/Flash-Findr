@@ -1,11 +1,14 @@
 import os
 from collections import defaultdict
 from app.utils.types import ImageHandle, List, NumpyMask, Any
+from trackers import SORTTracker
+import supervision as sv
 from ultralytics import YOLOE  # type: ignore
 from ultralytics.engine.results import Boxes  # type: ignore
 import numpy as np
 
 from .base_tool import BaseVisionTool, ToolKey
+from ...utils.image_utils import load_image_pil
 
 
 current_dir = __file__.rsplit("/", 1)[0]
@@ -22,6 +25,8 @@ class OpenVocabularyDetector(BaseVisionTool):
         self.imgsz: int
         self.conf_threshold: float
         self.vocabulary: List[str] | None
+        self.extrapolated_frames: int
+        self.tracker: SORTTracker
         self.tracking_history: Dict[str, List]
         super().__init__(model_id, config, device)
 
@@ -47,6 +52,8 @@ class OpenVocabularyDetector(BaseVisionTool):
         model.set_classes(self.vocabulary, pos_embeddings)
         onnx_model = self.compile_onnx_model(model, imgsz=self.imgsz)
 
+        self.tracker = SORTTracker(lost_track_buffer=5, frame_rate=10, 
+                                    minimum_consecutive_frames=2, minimum_iou_threshold=0.2)
         self.tracking_history = defaultdict(list)
 
         return onnx_model
@@ -58,17 +65,29 @@ class OpenVocabularyDetector(BaseVisionTool):
 
     def inference(self, model_inputs: np.ndarray) -> Any:
         """Runs YOLO inference."""
-        results = self.model.track(model_inputs,
-                                 conf=self.conf_threshold,
-                                  imgsz=self.imgsz,
-                                   tracker='bytetrack.yaml',
-                                    persist=True)
+        results = self.model.predict(model_inputs,
+                                    conf=self.conf_threshold,
+                                    imgsz=self.imgsz)
+        detections = sv.Detections.from_ultralytics(results[0])
+        detections = self.tracker.update(detections)
 
-        track_ids = results.boxes.id.int().cpu().tolist()
-        boxes = results.boxes.xyxy.cpu().tolist()
+        self.extrapolated_frames = 0
 
-        for track_id, box in zip(track_ids, boxes):
-            self.tracking_history[track_id].append(box)
+        for i in range(len(detections)):
+
+            xyxy_box = detections.xyxy[i]
+            track_id = detections.tracker_id[i]
+            confidence = detections.confidence[i]
+            class_id = detections.class_id[i]
+
+            self.tracking_history[track_id].append({"xyxy": xyxy_box,
+                                                    "conf": confidence,
+                                                    "cls": class_id,
+                                                    "id": track_id})
+
+        finished_tracks = self.tracking_history.keys() - set(detections.tracker_id)
+        for ft_id in finished_tracks:
+            ft = self.tracking_history.pop(ft_id)
 
         return results
 
@@ -77,36 +96,53 @@ class OpenVocabularyDetector(BaseVisionTool):
         results = raw_output[0]
         data = {
             "boxes": results.boxes,
-            "masks": results.masks if results.masks is not None else None,
+            "masks": results.masks,
             "keypoints": results.keypoints,
             "class_names": results.names
         }
         return data
     
     def extrapolate_last(self, frame_handle: ImageHandle) -> Any:
-        extrapolated_boxes = {}
-
+        extrapolated_boxes = []
+        self.extrapolated_frames += 1
         for track_id, boxes in self.tracking_history.items():
-            extrapolated_boxes[track_id] = self.extrapolate_box(boxes)
+            extrapolated_boxes.append({"xyxy": self.extrapolate_box(boxes) ,
+                                        "conf": boxes[-1]["conf"],
+                                        "cls": boxes[-1]["cls"],
+                                        "id": track_id})
 
-        results = self.last_result
-        results.boxes.xyxy = extrapolated_boxes
+        results = self.postprocess(self.last_result, None)
+        if len(extrapolated_boxes) > 0:
+            results["boxes"] = extrapolated_boxes
 
         return results
 
-    @staticmethod
-    def extrapolate_box(boxes: list) -> list:
-        diffs = np.diff(boxes, axis=0)
-        mean_diff = np.mean(diffs, axis=0)
-        next_box = boxes[-1] + mean_diff
-        return next_box
+    def extrapolate_box(self, boxes: list) -> list:
+
+        if self.trigger.get("value", 1) == 1:
+            raise ValueError("Frame extrapolation should only be called when "\
+                                    "trigger value is greater than 1")
+
+        if self.extrapolated_frames % self.trigger["value"] == 0:
+            raise ValueError("Frame extrapolation should only be called when inference was" \
+                                                    "not run. check detection logic")
+
+        xyxy_boxes = np.array([b["xyxy"] for b in boxes]).squeeze()
+        diffs = np.diff(xyxy_boxes, axis=0)
+        mean_diff = np.ma.average(diffs, axis=0, 
+                            weights=range(len(diffs)))
+        
+        extrapolation_factor = self.extrapolated_frames / self.trigger["value"]
+        next_xyxy_box = xyxy_boxes[-1] + (mean_diff * extrapolation_factor)
+        
+        return next_xyxy_box.tolist()
 
     @staticmethod
-    def compile_onnx_model(model, imgsz: int = DEFAULT_IMAGE_SIZE):
-        onnx_model = model.export(format="onnx", dynamic=True,
-                                   imgsz=imgsz, batch=1)
-        ort_session = YOLOE(onnx_model)
-        return ort_session
+    def compile_onnx_model(model, imgsz):
+        exported_model_path = model.export(format="openvino", simplify=True,
+                                nms=True, imgsz=imgsz, batch=1, dynamic=True)
+        ov_model = YOLOE(exported_model_path)
+        return ov_model
     
     @property
     def output_keys(self) -> list:

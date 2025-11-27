@@ -11,3 +11,8 @@ openvino
 requests
 python-multipart
 PyYAML
+ftfy
+git+https://github.com/openai/CLIP.git
+onnxslim
+onnxruntime
+websockets

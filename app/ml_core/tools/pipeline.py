@@ -61,10 +61,10 @@ class VisionPipeline:
             tool_class = AVAILABLE_TOOL_TYPES[tool_type]
             tool_config = self.config.tool_settings.get(tool_type, {})
             tool_base_config = _get_base_tool_config(tool_type)
-            tool_config.update(tool_base_config)
+            tool_base_config.update(tool_config)
 
-            tool_instance = tool_class(model_id=tool_config.pop('model'), 
-                                                            config=tool_config)
+            tool_instance = tool_class(model_id=tool_base_config.pop('model'), 
+                                                            config=tool_base_config)
             tools.append(tool_instance)
         
         return tools

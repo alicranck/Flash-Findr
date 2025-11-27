@@ -7,7 +7,7 @@ services:
     volumes:
       - ./cache:/app/cache
       - ./models:/app/models
-    command: sh -c "python3 scripts/prepare_models.py && uvicorn app.main:app --host 0.0.0.0 --port 8008"
+    command: sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8008"
   flash-findr-gpu:
     profiles: [ "gpu" ]
     build: .
@@ -26,4 +26,4 @@ services:
             - driver: nvidia
               count: all
               capabilities: [ gpu ]
-    command: sh -c "python3 scripts/prepare_models.py && uvicorn app.main:app --host 0.0.0.0 --port 8008"
+    command: sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8008"

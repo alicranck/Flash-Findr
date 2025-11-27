@@ -1,4 +1,4 @@
-model: "ggml-org/SmolVLM2-256M-Video-Instruct-GGUF:Q8_0"
+model: "ggml-org/SmolVLM2-256M-Video-Instruct-GGUF"
 imgsz: 512
 trigger:
   type: "scene_change"

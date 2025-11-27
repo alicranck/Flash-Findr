@@ -131,7 +131,7 @@ initButton.addEventListener('click', async () => {
         }
         toolSettings.ov_detection = {
             vocabulary: vocab,
-            imgsz: 480,
+            imgsz: 416,
             conf_threshold: parseFloat(confidenceInput.value),
             trigger: { "type": "stride", "value": 3 }
         };
@@ -282,7 +282,6 @@ function startStream(sessionId) {
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        log(data);
         drawMetadata(data);
     };
 
@@ -349,20 +348,6 @@ function drawMetadata(data) {
                 name: 'bbox'
             });
 
-            // Label (Visible only on hover)
-            const label = new Konva.Text({
-                x: x,
-                y: y - 10,
-                text: `${box.conf.toFixed(2)}`, // You might want class name here too if available in map
-                fontSize: 16,
-                fill: '#fff',
-                fontFamily: 'monospace',
-                padding: 4,
-                background: color, // Konva Text doesn't support background directly like this, need a Label group
-                visible: isHover
-            });
-
-            // Better Label: Group with Tag and Text
             if (isHover) {
                 const tooltip = new Konva.Label({
                     x: x,
@@ -384,7 +369,7 @@ function drawMetadata(data) {
 
                 const className = (data.class_names && data.class_names[box.cls]) ? data.class_names[box.cls] : box.cls;
                 tooltip.add(new Konva.Text({
-                    text: `${className}: ${box.conf.toFixed(2)}`,
+                    text: `${className} ${box.id}: ${box.conf.toFixed(2)}`,
                     fontFamily: 'monospace',
                     fontSize: 14,
                     padding: 5,

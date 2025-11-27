@@ -1,6 +1,7 @@
 from typing import Dict, List
 from fastapi import WebSocket
 
+
 class ConnectionManager:
     def __init__(self):
         # Map session_id -> List of WebSockets
