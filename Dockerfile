@@ -22,8 +22,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /tmp
 RUN git clone https://github.com/ggml-org/llama.cpp \
     && cd llama.cpp \
-    && cmake -B build -DGGML_CUDA=ON -DLLAMA_CURL=OFF\
+    && cmake -B build -DGGML_CUDA=OFF -DLLAMA_CURL=OFF\
     && cmake --build build --config Release -j 8
+
+RUN ln -s /tmp/llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
 
 # Set working directory
 WORKDIR /app

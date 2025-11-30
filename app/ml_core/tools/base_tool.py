@@ -44,6 +44,7 @@ class BaseVisionTool(ABC):
         self.tool_name: str = self.__class__.__name__
 
         self.last_result: Any = None
+        self.last_context: FrameContext = None
         
         # Trigger configuration
         self.trigger = config.get('trigger', {})
@@ -110,6 +111,10 @@ class BaseVisionTool(ABC):
         elif trigger_type == 'scene_change':
             threshold = self.trigger.get('threshold', 0.3)
             return context.scene_change_score >= threshold
+
+        elif trigger_type == 'time':
+            interval = self.trigger.get('value', 1)
+            return (context.timestamp - self.last_context.timestamp) >= interval
             
         return True
 
@@ -130,6 +135,8 @@ class BaseVisionTool(ABC):
                 raw_output = self.inference(model_input)
 
             self.last_result = raw_output
+            self.last_context = context
+            
             new_data = self.postprocess(raw_output, frame.shape)
         else:
             new_data = self.extrapolate_last(frame_handle)
