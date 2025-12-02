@@ -16,13 +16,14 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
     curl \
+    libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build llama.cpp with CUDA support
 WORKDIR /tmp
 RUN git clone https://github.com/ggml-org/llama.cpp \
     && cd llama.cpp \
-    && cmake -B build -DGGML_CUDA=OFF -DLLAMA_CURL=OFF\
+    && cmake -B build -DGGML_CUDA=OFF \
     && cmake --build build --config Release -j 8
 
 RUN ln -s /tmp/llama.cpp/build/bin/llama-server /usr/local/bin/llama-server

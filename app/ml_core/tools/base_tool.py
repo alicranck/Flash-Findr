@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import traceback
 import numpy as np
 import torch
 from PIL import Image
@@ -80,6 +81,7 @@ class BaseVisionTool(ABC):
             self.model = None
             self.loaded = False
             print(f"ERROR: Failed to load {self.tool_name}. Error: {e}")
+            print(f"TRACEBACK: {traceback.format_exc()}")
             raise
 
     def unload_tool(self):

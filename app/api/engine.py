@@ -25,6 +25,7 @@ class VideoInferenceEngine:
         """
         self.video_path = self._resolve_video_source(video_path)
         self.tool_pipeline = tool_pipeline
+        self.video_fps = None
         self.last_frame_idx = -1
         self.last_frame = None
 
@@ -64,6 +65,9 @@ class VideoInferenceEngine:
                     yield (b'--frame\r\n'
                            b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+                    if self.video_fps and self.video_fps > 0:
+                        await asyncio.sleep(1.0 / self.video_fps)
+
                 except asyncio.TimeoutError:
                     continue
         
@@ -84,6 +88,7 @@ class VideoInferenceEngine:
             await queue.put(None)
             return
         try:
+            self.video_fps = cap.get(cv2.CAP_PROP_FPS)
             while True:
                 result = await asyncio.to_thread(self._process_next_frame, cap)                
                 if result is None:
