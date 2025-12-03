@@ -32,10 +32,9 @@
                     <form action="/upload_file" method="POST" enctype="multipart/form-data" id="videoFileForm">
                         <div style="display: flex; gap: 10px; margin-top: 10px;">
                             <label for="videoFile" class="action-btn secondary-btn"
-                                style="flex-grow: 1; text-align: center;">Choose File</label>
+                                style="flex-grow: 1; text-align: center;">Upload Video File</label>
                             <input type="file" id="videoFile" name="video" accept="video/*" style="display: none;">
-                            <button type="submit" id="uploadButton" class="action-btn secondary-btn"
-                                style="flex-grow: 1;">Upload</button>
+                            <button type="submit" id="uploadButton" style="display: none;"></button>
                         </div>
                     </form>
                 </div>
@@ -86,6 +85,30 @@
                     </div>
                     <div class="card-body disabled-body" id="body-captioning">
                         <p class="info-text">Generates descriptions for frames.</p>
+                    </div>
+                </div>
+
+                <!-- Pose Estimation Tool Card -->
+                <div class="tool-card" id="card-pose">
+                    <div class="card-header">
+                        <span>
+                            <!-- SVG Icon for Pose -->
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="5" r="1"></circle>
+                                <path d="M9 20l3-6 3 6"></path>
+                                <path d="M6 8l6 2 6-2"></path>
+                                <path d="M12 10v4"></path>
+                            </svg>
+                            Pose Estimation
+                        </span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-pose">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="card-body disabled-body" id="body-pose">
+                        <p class="info-text">Detects human skeletons and keypoints.</p>
                     </div>
                 </div>
 

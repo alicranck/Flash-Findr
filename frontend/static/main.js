@@ -18,6 +18,10 @@ const toggleCaptioning = document.getElementById('toggle-captioning');
 const cardCaptioning = document.getElementById('card-captioning');
 const bodyCaptioning = document.getElementById('body-captioning');
 
+const togglePose = document.getElementById('toggle-pose');
+const cardPose = document.getElementById('card-pose');
+const bodyPose = document.getElementById('body-pose');
+
 // Inputs
 const classesInput = document.getElementById('classes');
 const confidenceInput = document.getElementById('confidence');
@@ -26,16 +30,27 @@ const confValDisplay = document.getElementById('conf-val');
 // --- Event Listeners ---
 
 // Toggle Logic
-toggleDetection.addEventListener('change', (e) => {
-    toggleTool(cardDetection, bodyDetection, e.target.checked);
-});
+const tools = [
+    { toggle: toggleDetection, card: cardDetection, body: bodyDetection, name: 'ov_detection' },
+    { toggle: toggleCaptioning, card: cardCaptioning, body: bodyCaptioning, name: 'captioning' },
+    { toggle: togglePose, card: cardPose, body: bodyPose, name: 'pose_estimation' }
+];
 
-toggleCaptioning.addEventListener('change', (e) => {
-    toggleTool(cardCaptioning, bodyCaptioning, e.target.checked);
-});
-
-confidenceInput.addEventListener('input', (e) => {
-    confValDisplay.textContent = e.target.value;
+tools.forEach(tool => {
+    tool.toggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            // Disable others
+            tools.forEach(t => {
+                if (t !== tool) {
+                    t.toggle.checked = false;
+                    toggleTool(t.card, t.body, false);
+                }
+            });
+            toggleTool(tool.card, tool.body, true);
+        } else {
+            toggleTool(tool.card, tool.body, false);
+        }
+    });
 });
 
 function toggleTool(card, body, isActive) {
@@ -69,9 +84,10 @@ function setStatus(status) {
 
 // --- Video File Upload ---
 videoFileInput.addEventListener('change', (event) => {
-    event_target = event.target;
+    const event_target = event.target;
     if (event_target.files && event_target.files.length > 0) {
-        videoUrlInput.value = `${event_target.files[0].name}`;
+        // Auto submit
+        videoFileForm.requestSubmit();
     }
 });
 
@@ -142,6 +158,15 @@ initButton.addEventListener('click', async () => {
         toolSettings.captioning = {
             imgsz: 480,
             trigger: { "type": "scene_change", "threshold": 0.2 }
+        };
+    }
+
+    // Pose Config
+    if (togglePose.checked) {
+        toolSettings.pose_estimation = {
+            imgsz: 640,
+            conf_threshold: 0.5,
+            trigger: { "type": "stride", "value": 2 }
         };
     }
 
@@ -384,6 +409,63 @@ function drawMetadata(data) {
             }
         });
     }
+
+    // Draw Poses
+    if (data.poses) {
+        const skeletonPairs = [
+            [0, 1], [0, 2], [1, 3], [2, 4], // Head
+            [5, 6], [5, 7], [7, 9], [6, 8], [8, 10], // Arms
+            [11, 12], [5, 11], [6, 12], // Torso
+            [11, 13], [13, 15], [12, 14], [14, 16] // Legs
+        ];
+
+        data.poses.forEach(pose => {
+            const kpts = pose.keypoints; // List of [[x,y], conf]
+
+            // Draw Skeleton
+            skeletonPairs.forEach(pair => {
+                const idx1 = pair[0];
+                const idx2 = pair[1];
+
+                if (idx1 < kpts.length && idx2 < kpts.length) {
+                    const kp1 = kpts[idx1];
+                    const kp2 = kpts[idx2];
+
+                    if (kp1[1] > 0.5 && kp2[1] > 0.5) { // Check confidence
+                        const line = new Konva.Line({
+                            points: [
+                                kp1[0][0] * scaleX, kp1[0][1] * scaleY,
+                                kp2[0][0] * scaleX, kp2[0][1] * scaleY
+                            ],
+                            stroke: '#00ff00',
+                            strokeWidth: 2,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        });
+                        layer.add(line);
+                    }
+                }
+            });
+
+            // Draw Keypoints
+            kpts.forEach(kp => {
+                const [x, y] = kp[0];
+                const conf = kp[1];
+                if (conf > 0.5) {
+                    const circle = new Konva.Circle({
+                        x: x * scaleX,
+                        y: y * scaleY,
+                        radius: 3,
+                        fill: '#ff0000',
+                        stroke: 'white',
+                        strokeWidth: 1
+                    });
+                    layer.add(circle);
+                }
+            });
+        });
+    }
+
     layer.batchDraw();
 }
 
