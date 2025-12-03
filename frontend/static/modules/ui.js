@@ -6,6 +6,7 @@ export class UI {
         this.videoUrlInput = document.getElementById('videoUrl');
         this.startButton = document.getElementById('startButton');
         this.initButton = document.getElementById('initButton');
+        this.resetButton = document.getElementById('resetButton');
         this.initStatus = document.getElementById('init-status');
         this.logContent = document.getElementById('log-content');
         this.statusIndicator = document.getElementById('status-indicator');

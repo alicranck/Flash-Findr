@@ -94,6 +94,41 @@ async def initialize_pipeline(session_id: str):
         raise HTTPException(status_code=500, detail=f"Pipeline Initialization Failed: {e}")
 
 
+@router.post("/session/reset")
+async def reset_session():
+    """
+    Resets/clears the current active session.
+    Unloads pipelines and releases the session lock.
+    
+    Returns:
+        JSONResponse: Status of the reset operation.
+    """
+    session_manager = SessionManager.get_instance()
+    active_session_id = session_manager.get_active_session()
+    
+    if not active_session_id:
+        return JSONResponse(content={"status": "no_active_session", "message": "No active session to reset"})
+    
+    # Clean up the session
+    if active_session_id in SESSION_STORE:
+        session = SESSION_STORE[active_session_id]
+        if session.get("pipeline"):
+            try:
+                session["pipeline"].unload_tools()
+            except Exception as e:
+                print(f"Error unloading pipeline: {e}")
+        del SESSION_STORE[active_session_id]
+    
+    # Release the session lock
+    session_manager.end_session(active_session_id)
+    
+    return JSONResponse(content={
+        "status": "reset_successful", 
+        "message": f"Session {active_session_id} has been reset",
+        "session_id": active_session_id
+    })
+
+
 @router.websocket("/ws/stream/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await manager.connect(session_id, websocket)

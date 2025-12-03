@@ -97,14 +97,14 @@ ui.initButton.addEventListener('click', async () => {
         ui.initStatus.textContent = "System Ready. Click Start to stream.";
         ui.initStatus.style.color = "var(--success)";
 
-        ui.initButton.textContent = "✅ Initialized";
+        ui.initButton.textContent = "Initialized";
         ui.startButton.disabled = false;
         ui.startButton.classList.add('pulse-animation');
 
     } catch (error) {
         ui.log(`[ERROR] ${error.message}`);
         ui.initButton.disabled = false;
-        ui.initButton.textContent = "⚙️ Initialize";
+        ui.initButton.textContent = "Initialize";
         ui.initStatus.textContent = "Initialization failed.";
         ui.initStatus.style.color = "var(--danger)";
         currentSessionId = null;
@@ -124,4 +124,36 @@ ui.startButton.addEventListener('click', () => {
     ui.initStatus.textContent = "Streaming active";
 
     stream.start(currentSessionId);
+});
+
+// --- Reset Button Handler ---
+ui.resetButton.addEventListener('click', async () => {
+    ui.log("[SYSTEM] Resetting session...");
+    ui.resetButton.disabled = true;
+    ui.resetButton.textContent = "⏳ Resetting...";
+
+    try {
+        const data = await api.resetSession();
+        ui.log(`[SYSTEM] ${data.message}`);
+
+        // Reset UI state
+        currentSessionId = null;
+        ui.initButton.disabled = false;
+        ui.initButton.textContent = "Initialize";
+        ui.startButton.disabled = true;
+        ui.startButton.textContent = "Start Stream";
+        ui.initStatus.textContent = "System not initialized";
+        ui.initStatus.style.color = "";
+        ui.setStatus("READY");
+
+        // Stop stream if active
+        stream.stop();
+
+        ui.log("[SYSTEM] Ready for new session.");
+    } catch (error) {
+        ui.log(`[ERROR] Reset failed: ${error.message}`);
+    } finally {
+        ui.resetButton.disabled = false;
+        ui.resetButton.textContent = "Reset";
+    }
 });

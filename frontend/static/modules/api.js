@@ -53,6 +53,19 @@ export class API {
         return await response.json();
     }
 
+    async resetSession() {
+        const response = await fetch(`${this.baseUrl}/session/reset`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Session reset failed");
+        }
+
+        return await response.json();
+    }
+
     getStreamUrl(sessionId) {
         return `${this.baseUrl}/stream/${sessionId}`;
     }

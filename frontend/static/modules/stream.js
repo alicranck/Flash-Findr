@@ -5,7 +5,7 @@ export class Stream {
         this.api = api;
         this.renderer = renderer;
         this.ui = ui;
-        this.videoStreamImg = ui.videoUrlInput.nextElementSibling || document.getElementById('video-stream');
+        this.videoStreamImg = document.getElementById('video-stream');
         this.placeholderOverlay = document.getElementById('placeholder-overlay');
         this.ws = null;
     }
