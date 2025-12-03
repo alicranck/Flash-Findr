@@ -11,7 +11,7 @@ from ..ml_core.tools.pipeline import PipelineConfig, VisionPipeline
 from .socket_manager import ConnectionManager
 from ..utils.serialization import serialize_data
 
-from ..core.session_manager import SessionManager
+from .session_manager import SessionManager
 
 cache_dir = "./cache"
 if not os.path.exists(cache_dir):
@@ -90,6 +90,7 @@ async def initialize_pipeline(session_id: str):
         session["pipeline"] = VisionPipeline(config=session["pipeline_configuration"])
         return JSONResponse(content={"status": "initialized", "session_id": session_id})
     except Exception as e:
+        SessionManager.get_instance().end_session(session_id)
         raise HTTPException(status_code=500, detail=f"Pipeline Initialization Failed: {e}")
 
 

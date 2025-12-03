@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .api import endpoints as api_endpoints
-from .core.session_manager import SessionManager
+from .api.session_manager import SessionManager
 
 app = FastAPI(
     title="Flash-Findr: Real-Time OV Detector",

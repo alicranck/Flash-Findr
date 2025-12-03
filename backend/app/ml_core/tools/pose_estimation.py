@@ -9,6 +9,7 @@ from ...utils.locations import APP_DIR
 DEFAULT_IMAGE_SIZE = 640
 DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
+
 class PoseEstimator(BaseVisionTool):
     """
     Pose estimation tool using Ultralytics YOLO-Pose models.
@@ -52,22 +53,14 @@ class PoseEstimator(BaseVisionTool):
         
         output_kpts = []
         if keypoints is not None:
-            # keypoints.xy is (N, 17, 2), keypoints.conf is (N, 17)
-            # We want to serialize this.
-            # Let's return a list of objects, each with 'keypoints' and 'box'
-            
             for i, kpt in enumerate(keypoints):
                 # kpt.xy is (1, 17, 2) -> (17, 2)
                 xy = kpt.xy[0].cpu().numpy().tolist()
                 conf = kpt.conf[0].cpu().numpy().tolist() if kpt.conf is not None else [1.0]*17
                 
-                # Bounding box
-                box = raw_output.boxes[i].xyxy[0].cpu().numpy().tolist()
-                
                 output_kpts.append({
                     "id": i,
                     "keypoints": list(zip(xy, conf)), # List of ([x, y], conf)
-                    "box": box
                 })
 
         return {
@@ -75,7 +68,8 @@ class PoseEstimator(BaseVisionTool):
         }
     
     def extrapolate_last(self, frame_handle: Any) -> Any:
-        return self.last_result
+        results = self.postprocess(self.last_result, None)
+        return results
 
     @property
     def output_keys(self) -> list:
