@@ -11,6 +11,7 @@ from ..ml_core.tools.pipeline import PipelineConfig, VisionPipeline
 from .socket_manager import ConnectionManager
 from ..utils.serialization import serialize_data
 
+from ..core.session_manager import SessionManager
 
 cache_dir = "./cache"
 if not os.path.exists(cache_dir):
@@ -44,8 +45,16 @@ async def init_session(
     Returns:
         JSONResponse: A JSON object containing the assigned `session_id`.
     """
+    session_manager = SessionManager.get_instance()
+    # Double check in case middleware didn't catch it (e.g. internal call)
+    if session_manager.is_active():
+         raise HTTPException(status_code=503, detail="System is busy with an active session.")
+
     try:
         session_id = str(uuid.uuid4())
+        if not session_manager.start_session(session_id):
+             raise HTTPException(status_code=503, detail="System is busy with an active session.")
+             
         SESSION_STORE[session_id] = {
             "pipeline": None, 
             "video_url": session_config.video_url,
@@ -53,6 +62,7 @@ async def init_session(
         }
         return JSONResponse(content={"session_id": session_id})
     except Exception as e:
+        session_manager.end_session(session_id)
         raise HTTPException(status_code=400, detail=f"Session Initialization Error: {e}")
 
 
@@ -128,11 +138,24 @@ async def stream_video(session_id: str):
             json_data = serialize_data(data)
             await manager.broadcast(session_id, json_data)
 
+        async def stream_wrapper(generator):
+            try:
+                async for chunk in generator:
+                    yield chunk
+            finally:
+                # Cleanup session when stream ends
+                SessionManager.get_instance().end_session(session_id)
+                if session_id in SESSION_STORE:
+                    del SESSION_STORE[session_id]
+
         return StreamingResponse(
-            engine.run_inference(on_data=on_data),
+            stream_wrapper(engine.run_inference(on_data=on_data)),
             media_type="multipart/x-mixed-replace; boundary=frame"
         )
         
     except (RuntimeError, ValueError) as e:
         pipeline.unload_tools()
+        SessionManager.get_instance().end_session(session_id)
+        if session_id in SESSION_STORE:
+             del SESSION_STORE[session_id]
         raise HTTPException(status_code=500, detail=f"Streaming Error: {e}")

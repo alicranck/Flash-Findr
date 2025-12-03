@@ -88,7 +88,7 @@ videoFileForm.addEventListener('submit', async (event) => {
         const formData = new FormData(event_target);
         const file = formData.get('video');
         if (file) {
-            const response = await fetch('/upload_file', {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/upload_file`, {
                 method: 'POST',
                 body: formData
             });
@@ -163,7 +163,7 @@ initButton.addEventListener('click', async () => {
 
     try {
         // 1. Create Session
-        const response = await fetch('/session/init', {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/session/init`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -183,7 +183,7 @@ initButton.addEventListener('click', async () => {
         initButton.textContent = "⏳ Loading Models...";
         initStatus.textContent = "Loading models... (this may take a moment)";
 
-        const initResponse = await fetch(`/session/${currentSessionId}/initialize_pipeline`, {
+        const initResponse = await fetch(`${CONFIG.API_BASE_URL}/session/${currentSessionId}/initialize_pipeline`, {
             method: 'POST'
         });
 
@@ -250,8 +250,9 @@ resizeObserver.observe(videoWrapper);
 
 
 function startStream(sessionId) {
-    const streamUrl = `/stream/${sessionId}`;
-    const wsUrl = `ws://${window.location.host}/ws/stream/${sessionId}`;
+    const streamUrl = `${CONFIG.API_BASE_URL}/stream/${sessionId}`;
+    const wsBase = CONFIG.API_BASE_URL.replace("http", "ws");
+    const wsUrl = `${wsBase}/ws/stream/${sessionId}`;
 
     // 1. Start Video Stream
     videoStreamImg.onload = () => {
