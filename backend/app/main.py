@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,5 +40,4 @@ async def session_guard(request: Request, call_next):
     return response
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8008, reload=True)

@@ -4,6 +4,7 @@ import { UI } from './modules/ui.js';
 import { API } from './modules/api.js';
 import { Renderer } from './modules/visualization/renderer.js';
 import { Stream } from './modules/stream.js';
+import { CONFIG } from './config.js';
 
 console.log("Main.js loaded");
 

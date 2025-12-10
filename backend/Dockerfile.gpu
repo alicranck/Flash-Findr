@@ -1,6 +1,6 @@
-# Multi-stage build for smaller final image
-# Stage 1: Build llama.cpp
-FROM python:3.11-slim AS llama-builder
+# Multi-stage build for GPU-enabled image
+# Stage 1: Build llama.cpp with CUDA support
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04 as llama-builder
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -12,19 +12,21 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /tmp
 RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp \
     && cd llama.cpp \
-    && cmake -B build -DGGML_CUDA=OFF \
+    && cmake -B build -DGGML_CUDA=ON \
     && cmake --build build --config Release -j $(nproc)
 
-# Stage 2: Final runtime image
-FROM python:3.11-slim
+# Stage 2: Final runtime image with CUDA runtime (not devel)
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV LLAMA_SERVER_PATH=/usr/local/bin/llama-server
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install only runtime dependencies
+# Install Python and runtime dependencies
 RUN apt-get update && apt-get install -y \
-    git \
+    python3.11 \
+    python3-pip \
     libgl1 \
     libglib2.0-0 \
     libcurl4 \
@@ -41,13 +43,10 @@ COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . /app
-
-# Set PYTHONPATH to include /app
-ENV PYTHONPATH=/app
+COPY . .
 
 # Expose port
 EXPOSE 8008
 
-# Default command with debug listing add listing
-CMD ["fastapi", "run", "app/main.py", "--host", "0.0.0.0", "--port", "8008"]
+# Default command
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8008"]

@@ -1,0 +1,25 @@
+# Add to .dockerignore to reduce build context size
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.git/
+.gitignore
+.vscode/
+.idea/
+*.md
+.env
+.venv/
+venv/
+*.log
+.DS_Store
+cache/
+*.pt
+*.onnx
+models/

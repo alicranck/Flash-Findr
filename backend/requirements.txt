@@ -1,6 +1,6 @@
 ultralytics
 Pillow
-fastapi
+fastapi[standard]
 uvicorn
 opencv-python-headless
 numpy
