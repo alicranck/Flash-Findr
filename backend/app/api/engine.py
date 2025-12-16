@@ -1,9 +1,12 @@
 import asyncio
 import cv2
 import os
+import logging
 from ..ml_core.tools.pipeline import VisionPipeline
 from ..utils.image_utils import color_histogram
 from ..utils.types import FrameContext
+
+logger = logging.getLogger(__name__)
 
 
 DELAY_SECONDS_DEFAULT = 3.0
@@ -46,7 +49,7 @@ class VideoInferenceEngine:
         queue = asyncio.Queue(maxsize=max_queue_size)
         producer_task = asyncio.create_task(self._inference_producer(queue))
 
-        print(f"Buffering for {buffer_delay} seconds...")
+        logger.info(f"Buffering for {buffer_delay} seconds...")
         await asyncio.sleep(buffer_delay)
 
         try:
@@ -72,7 +75,7 @@ class VideoInferenceEngine:
                     continue
         
         except Exception as e:
-            print(f"Streaming Error: {e}")
+            logger.error(f"Streaming Error: {e}")
         finally:
             if not producer_task.done():
                 producer_task.cancel()
@@ -84,7 +87,7 @@ class VideoInferenceEngine:
     async def _inference_producer(self, queue: asyncio.Queue):
         cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
-            print(f"Error opening video stream: {self.video_path}")
+            logger.error(f"Error opening video stream: {self.video_path}")
             await queue.put(None)
             return
         try:
@@ -97,7 +100,7 @@ class VideoInferenceEngine:
                 await queue.put(result)
 
         except Exception as e:
-            print(f"Producer Error: {e}")
+            logger.error(f"Producer Error: {e}")
         finally:
             cap.release()
             await queue.put(None)  # Signal end of stream

@@ -2,11 +2,14 @@ from abc import ABC, abstractmethod
 import traceback
 import numpy as np
 import torch
+import logging
 from PIL import Image
 
 from ...utils.types import ImageHandle, List, Any, FrameContext
 from ...utils.image_utils import load_image_opencv
 from ...utils.locations import APP_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class ToolKey:
@@ -49,7 +52,7 @@ class BaseVisionTool(ABC):
         
         # Trigger configuration
         self.trigger = config.get('trigger', {})
-        print(f"INFO: Trigger for {self.tool_name}: {self.trigger}")
+        logger.info(f"Trigger for {self.tool_name}: {self.trigger}")
 
         self.load_tool(config)
 
@@ -59,10 +62,10 @@ class BaseVisionTool(ABC):
         This is the common "init model" flow.
         """
         if self.loaded:
-            print(f"INFO: {self.tool_name} is already loaded.")
+            logger.info(f"{self.tool_name} is already loaded.")
             return
 
-        print(f"INFO: Loading {self.tool_name} with model: {self.model_id}...")
+        logger.info(f"Loading {self.tool_name} with model: {self.model_id}...")
 
         for key in self.config_keys:
             if key.required:
@@ -75,13 +78,13 @@ class BaseVisionTool(ABC):
             self.model = self._load_model()
             self._warmup()
             self.loaded = True
-            print(f"INFO: {self.tool_name} successfully loaded and warmed up on {self.device}.")
+            logger.info(f"{self.tool_name} successfully loaded and warmed up on {self.device}.")
             
         except Exception as e:
             self.model = None
             self.loaded = False
-            print(f"ERROR: Failed to load {self.tool_name}. Error: {e}")
-            print(f"TRACEBACK: {traceback.format_exc()}")
+            logger.error(f"Failed to load {self.tool_name}. Error: {e}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
             raise
 
     def unload_tool(self):
@@ -95,7 +98,7 @@ class BaseVisionTool(ABC):
                 torch.cuda.empty_cache()
         self.model = None
         self.loaded = False
-        print(f"INFO: {self.tool_name} unloaded and cleared from {self.device}.")
+        logger.info(f"{self.tool_name} unloaded and cleared from {self.device}.")
 
     def should_run(self, context: FrameContext) -> bool:
         """
@@ -129,7 +132,7 @@ class BaseVisionTool(ABC):
             raise RuntimeError(f"ERROR: {self.tool_name} is not loaded. Call .load_tool() first.")
 
         if self.should_run(context):
-            print(f"DETECTED Trigger for {self.tool_name}")
+            logger.debug(f"Trigger detected for {self.tool_name}")
             frame = load_image_opencv(frame_handle)
             model_input = self.preprocess(frame)
             
@@ -169,15 +172,15 @@ class BaseVisionTool(ABC):
         Performs a dummy inference run to initialize the model on the device.
         This helps avoid latency spikes during the first real inference.
         """
-        print("INFO: Warming up model...")
+        logger.info("Warming up model...")
         try:
             for _ in range(4):
                 dummy_image = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
                 inputs = self.preprocess(dummy_image)
                 _ = self.inference(inputs)
-            print("INFO: Warmup complete.")
+            logger.info("Warmup complete.")
         except Exception as e:
-            print(f"WARN: Model warmup failed: {e}")
+            logger.warning(f"Model warmup failed: {e}")
 
     def preprocess(self, frame: np.ndarray) -> Any:
         """Child implements frame-to-tensor logic (resize, normalize, to-device)."""

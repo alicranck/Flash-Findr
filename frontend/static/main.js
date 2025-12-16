@@ -4,13 +4,12 @@ import { UI } from './modules/ui.js';
 import { API } from './modules/api.js';
 import { Renderer } from './modules/visualization/renderer.js';
 import { Stream } from './modules/stream.js';
-import { CONFIG } from './config.js';
 
 console.log("Main.js loaded");
 
 // Initialize modules
 const ui = new UI();
-const api = new API(CONFIG.API_BASE_URL);
+const api = new API('/api');
 const videoStreamImg = document.getElementById('video-stream');
 const videoWrapper = document.getElementById('video-wrapper');
 const renderer = new Renderer(videoStreamImg, videoWrapper, 'canvas-overlay');

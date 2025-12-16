@@ -1,4 +1,5 @@
 import os
+import logging
 from collections import defaultdict
 from trackers import SORTTracker
 import supervision as sv
@@ -12,6 +13,8 @@ from ...utils.image_utils import load_image_pil
 from ...utils.tracking import BoxKalmanFilter
 from ...utils.types import ImageHandle, List, NumpyMask, Any
 from ...utils.locations import APP_DIR
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_IMAGE_SIZE = 640
@@ -67,7 +70,7 @@ class OpenVocabularyDetector(BaseVisionTool):
     def set_vocabulary(self, classes: list):
         if self.model:
             self.model.set_classes(classes)
-            print(f"INFO: DetectionTool vocabulary set to: {classes}")
+            logger.info(f"DetectionTool vocabulary set to: {classes}")
 
     def inference(self, model_inputs: np.ndarray) -> Any:
         """Runs YOLO inference."""

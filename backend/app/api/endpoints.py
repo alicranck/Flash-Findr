@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 from typing import Dict, Any
 from pydantic import BaseModel, Field
 
@@ -12,6 +13,8 @@ from .socket_manager import ConnectionManager
 from ..utils.serialization import serialize_data
 
 from .session_manager import SessionManager
+
+logger = logging.getLogger(__name__)
 
 cache_dir = "./cache"
 if not os.path.exists(cache_dir):
@@ -45,6 +48,7 @@ async def init_session(
     Returns:
         JSONResponse: A JSON object containing the assigned `session_id`.
     """
+    logger.info(f"Initializing session with config: {session_config}")
     session_manager = SessionManager.get_instance()
     # Double check in case middleware didn't catch it (e.g. internal call)
     if session_manager.is_active():
@@ -116,7 +120,7 @@ async def reset_session():
             try:
                 session["pipeline"].unload_tools()
             except Exception as e:
-                print(f"Error unloading pipeline: {e}")
+                logger.error(f"Error unloading pipeline: {e}")
         del SESSION_STORE[active_session_id]
     
     # Release the session lock

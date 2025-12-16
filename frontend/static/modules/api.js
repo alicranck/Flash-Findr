@@ -71,7 +71,7 @@ export class API {
     }
 
     getWebSocketUrl(sessionId) {
-        const wsBase = this.baseUrl.replace("http", "ws");
-        return `${wsBase}/ws/stream/${sessionId}`;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${window.location.host}/api/ws/stream/${sessionId}`;
     }
 }

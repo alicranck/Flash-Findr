@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 import socket
+import logging
 import requests
 import atexit
 import shutil
@@ -13,6 +14,8 @@ import cv2
 
 from .base_tool import BaseVisionTool, ToolKey
 from ...utils.image_utils import base64_encode
+
+logger = logging.getLogger(__name__)
 
 
 current_dir = __file__.rsplit("/", 1)[0]
@@ -134,7 +137,7 @@ class LlamaCppCaptioner(BaseVisionTool):
             "--jinja"
         ]
         
-        print(f"INFO: Starting llama-server on port {self.port}...")
+        logger.info(f"Starting llama-server on port {self.port}...")
         self.server_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
         # Register cleanup
@@ -151,7 +154,7 @@ class LlamaCppCaptioner(BaseVisionTool):
             try:
                 response = requests.get(f"{self.server_url}/health")
                 if response.status_code == 200:
-                    print("INFO: llama-server is ready.")
+                    logger.info("llama-server is ready.")
                     return
             except requests.ConnectionError:
                 pass
@@ -165,7 +168,7 @@ class LlamaCppCaptioner(BaseVisionTool):
 
     def unload_tool(self):
         if self.server_process:
-            print("INFO: Stopping llama-server...")
+            logger.info("Stopping llama-server...")
             self.server_process.terminate()
             try:
                 self.server_process.wait(timeout=5)
@@ -198,7 +201,7 @@ class LlamaCppCaptioner(BaseVisionTool):
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            print(f"ERROR: Inference failed: {e}")
+            logger.error(f"Inference failed: {e}")
             return {}
 
     def postprocess(self, raw_output: Any, original_shape: tuple) -> dict:
