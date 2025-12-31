@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .api import endpoints as api_endpoints
+from .api import indexer as indexer_endpoints
 from .api.session_manager import SessionManager
 
 
@@ -23,26 +24,4 @@ app.add_middleware(
 
 # Include the endpoints that handle the stream and detection logic
 app.include_router(api_endpoints.router, tags=["Detection Stream"])
-
-# @app.middleware("http")
-# async def session_guard(request: Request, call_next):
-#     """
-#     Middleware to reject new session initialization if a session is already active.
-#     Manually adds CORS headers to the early-exit JSONResponse.
-#     """
-#     if request.url.path == "/session/init" and request.method == "POST":
-#         manager = SessionManager.get_instance()
-#         if manager.is_active():
-#             response = JSONResponse(
-#                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-#                 content={"detail": "System is busy with an active session. Please try again later."}
-#             )
-            
-#             response.headers["Access-Control-Allow-Origin"] = "*"
-#             return response
-
-#     response = await call_next(request)
-#     return response
-
-# if __name__ == "__main__":
-#     uvicorn.run("app.main:app", host="0.0.0.0", port=8008, reload=True)
+app.include_router(indexer_endpoints.router, prefix="/indexer", tags=["Video Indexer"])
