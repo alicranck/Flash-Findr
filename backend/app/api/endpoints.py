@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Query, HTTPException, Body, WebSocket, WebSocketDisconnect, File, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
 
-from vision_core.engine.video_engine import VideoInferenceEngine
-from vision_core.core.tools.pipeline import PipelineConfig, VisionPipeline
-from vision_core.utils.serialization import serialize_data
+from vision_tools.engine.video_engine import VideoInferenceEngine
+from vision_tools.core.tools.pipeline import PipelineConfig, VisionPipeline
+from vision_tools.utils.serialization import serialize_data
 from .socket_manager import ConnectionManager
 
 from .session_manager import SessionManager

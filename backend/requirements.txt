@@ -4,3 +4,4 @@ requests
 python-multipart
 PyYAML
 websockets
+git+https://github.com/alicranck/vision-tools.git

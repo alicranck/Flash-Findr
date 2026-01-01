@@ -12,7 +12,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://localhost:8008/;
+        proxy_pass http://${API_BACKEND_HOST}/;
 
         # WebSocket support
         proxy_http_version 1.1;
